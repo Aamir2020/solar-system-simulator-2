@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solar-system-simulator"
+version = "2.0.0"
+description = "A GPU-rendered Python solar system with leapfrog N-body physics and NASA Horizons data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Aamir Zekaria Ali"}]
+dependencies = ["numpy>=2.0,<3", "PySide6>=6.7,<7", "moderngl>=5.10,<6", "requests>=2.32,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "ruff>=0.9,<1", "build>=1.2,<2", "pyinstaller>=6.10,<7"]
+
+[project.scripts]
+solar-system = "solar_system_simulator.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+solar_system_simulator = ["assets/*.json", "rendering/*.glsl"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
