@@ -1,0 +1,116 @@
+name: Windows executable release
+
+on:
+  push:
+    tags:
+      - '**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish again (for example v2.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and check Windows x64 executable
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify that the checkout matches an existing tag
+        shell: pwsh
+        run: |
+          git check-ref-format "refs/tags/$env:RELEASE_TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid release tag' }
+          $tagCommit = git rev-parse --verify "refs/tags/$env:RELEASE_TAG^{commit}"
+          if ($LASTEXITCODE -ne 0) { throw 'The requested tag does not exist' }
+          $headCommit = git rev-parse HEAD
+          if ($tagCommit -ne $headCommit) { throw 'The checkout does not match the requested tag' }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+          cache: pip
+      - name: Install the application and executable builder
+        run: python -m pip install -e . "pyinstaller>=6.10,<7"
+      - name: Check installed dependencies
+        run: python -m pip check
+      - name: Run scientific, asset, and native binding checks
+        run: python -m unittest discover -s tests -v
+      - name: Build the standalone executable with bundled textures
+        run: python -m PyInstaller --clean --noconfirm orbital.spec
+      - name: Smoke-test the packaged executable
+        shell: pwsh
+        run: |
+          @'
+          import subprocess
+          result = subprocess.run(
+              [r'dist/Orbital.exe', '--headless', '--steps', '365'],
+              timeout=60, check=False,
+          )
+          if result.returncode:
+              raise SystemExit(f'Packaged executable failed with exit code {result.returncode}')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged executable smoke test failed' }
+      - name: Prepare release assets and SHA-256 checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          Copy-Item dist/Orbital.exe release/Orbital-windows-x64.exe
+          Copy-Item LICENSE release/LICENSE.txt
+          Copy-Item src/solar_system_simulator/assets/textures/ATTRIBUTION.md release/TEXTURE-CREDITS.txt
+          $checksums = Get-ChildItem release -File | Sort-Object Name | ForEach-Object {
+            '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          }
+          $checksums | Set-Content release/SHA256SUMS -Encoding utf8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Attach executable to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: release
+      - name: Create or update the release for the pushed tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/* --repo "$GH_REPO" --clobber
+          else
+            options=(--verify-tag --generate-notes --title "$RELEASE_TAG")
+            if [[ "$RELEASE_TAG" == *-* ]]; then
+              options+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" release/* --repo "$GH_REPO" "${options[@]}"
+          fi

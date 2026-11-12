@@ -10,6 +10,8 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from ..data.catalog import AU, BODIES
 from .camera import Camera, display_radii, pick_body
+from .labels import visible_labels
+from .textures import load_body_textures
 
 
 def shader(name):
@@ -49,6 +51,7 @@ class Viewport(QOpenGLWidget):
         self.drag_start = self.last_drag = None
         self.dragged = False
         self.resources = []
+        self._visible_labels = set()
         self.setAccessibleName("Solar system viewport")
         self.setAccessibleDescription("Scroll to zoom; drag to pan; click a body to inspect; double click to follow.")
 
@@ -62,6 +65,8 @@ class Viewport(QOpenGLWidget):
             self.background_program = self.ctx.program(vertex_shader=shader('quad'),
                                                        fragment_shader=shader('background'))
             self.body_vao = self.ctx.simple_vertex_array(self.body_program, self.quad_buffer, 'in_pos')
+            self.body_textures = load_body_textures(self.ctx)
+            self.body_program['surface_map'].value = 0
             self.background_vao = self.ctx.simple_vertex_array(
                 self.background_program, self.quad_buffer, 'in_pos')
             self.trail_program = self.ctx.program(vertex_shader=shader('trail_vertex'),
@@ -72,7 +77,7 @@ class Viewport(QOpenGLWidget):
                 [(self.trail_buffer, '2f 1f 1f', 'in_pos', 'in_side', 'in_age')])
             self.resources = [self.body_vao, self.background_vao, self.trail_vao,
                               self.quad_buffer, self.trail_buffer, self.body_program,
-                              self.background_program, self.trail_program]
+                              self.background_program, self.trail_program, *self.body_textures]
             self.context().aboutToBeDestroyed.connect(self.cleanup)
         except Exception as exc:
             self.error = f"OpenGL 3.3 initialization failed: {exc}"
@@ -209,6 +214,7 @@ class Viewport(QOpenGLWidget):
             program['color'].value = rgb(body.color)
             program['kind'].value = i
             program['light_dir'].value = (float(light[0]), -float(light[1]))
+            self.body_textures[i].use(location=0)
             self.body_vao.render()
 
     def _draw_trails(self, w, h):
@@ -239,10 +245,11 @@ class Viewport(QOpenGLWidget):
         w, h = self.width(), self.height()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setFont(QFont('Sans Serif', 9))
+        self._visible_labels = set()
         if self.positions is not None:
             points = self.camera.to_screen(self.positions, w, h)
             radii = display_radii(BODIES, self.camera.span, h, self.physical)
-            occupied = []
+            candidates = {}
             order = sorted(range(len(BODIES)), key=lambda i: i != self.selection)
             for i in order:
                 p = points[i]
@@ -257,10 +264,16 @@ class Viewport(QOpenGLWidget):
                 text = BODIES[i].name + ('  / FOLLOWING' if self.follow and i==self.selection else '')
                 rect = QRectF(p[0]+max(radii[i],5)+11, p[1]-8,
                               painter.fontMetrics().horizontalAdvance(text)+12, 22)
-                if i != self.selection and any(rect.intersects(other) for other in occupied):
+                candidates[i] = (text, rect)
+            self._visible_labels = visible_labels(
+                {i: (rect.x(), rect.y(), rect.width(), rect.height())
+                 for i, (_, rect) in candidates.items()}, self.selection)
+            for i in order:
+                if i not in self._visible_labels:
                     continue
-                occupied.append(rect)
-                painter.setPen(QColor('#f0d0aa' if i==self.selection else '#adbace'))
+                text, rect = candidates[i]
+                priority = 0 if self.selection is None else self.selection
+                painter.setPen(QColor('#f0d0aa' if i==priority else '#adbace'))
                 painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter, text)
         painter.setPen(QColor('#7d8da4'))
         painter.drawText(22, 30, 'ORBITAL / LIVE SIMULATION')

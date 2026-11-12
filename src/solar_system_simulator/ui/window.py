@@ -497,6 +497,12 @@ class MainWindow(QMainWindow):
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
             'The offline demo uses synthetic circular orbits and is not NASA data. '
             'Trails show simulated history. Default radii are exaggerated.\n\n'
+            'IMAGE CREDITS\nPlanet and Sun maps: Solar System Scope / INOVE, '
+            'based on NASA imagery; unmodified 2K maps, CC BY 4.0. '
+            'https://www.solarsystemscope.com/textures/\n'
+            'https://creativecommons.org/licenses/by/4.0/\n'
+            'Maps include enhanced colors and filled unmapped regions. '
+            'Saturn rings remain decorative.\n\n'
             'High playback rates may be limited by available compute. The numerical timestep '
             'does not change automatically. Arbitrary reverse playback is not implemented.')
 

@@ -5,6 +5,8 @@ from PyInstaller.utils.hooks import collect_submodules
 root = Path(SPECPATH)
 package = root / 'src' / 'solar_system_simulator'
 data = [(str(package / 'assets' / 'demo.json'), 'solar_system_simulator/assets')]
+data += [(str(asset), 'solar_system_simulator/assets/textures')
+         for asset in (package / 'assets' / 'textures').iterdir() if asset.is_file()]
 data += [(str(shader), 'solar_system_simulator/rendering')
          for shader in (package / 'rendering').glob('*.glsl')]
 a = Analysis(

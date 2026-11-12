@@ -7,6 +7,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
     env:
       LIBGL_ALWAYS_SOFTWARE: '1'
       QT_QPA_PLATFORM: xcb
@@ -15,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install desktop libraries
         run: |
@@ -31,5 +34,5 @@ jobs:
         run: python -m build
       - uses: actions/upload-artifact@v4
         with:
-          name: python-distributions
+          name: python-distributions-${{ matrix.python-version }}
           path: dist/*

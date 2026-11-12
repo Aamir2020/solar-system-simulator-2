@@ -20,7 +20,7 @@ class Camera:
 
     def zoom(self, point, factor, width, height):
         before = self.to_world(point, width, height)
-        self.span = float(np.clip(self.span * factor, 0.00005 * AU, 160 * AU))
+        self.span = float(np.clip(self.span * factor, 0.00005 * AU, 2000 * AU))
         after = self.to_world(point, width, height)
         self.center += before - after
         self.target_center = self.center.copy()
@@ -32,7 +32,7 @@ class Camera:
 
     def preset(self, center, span):
         self.target_center = np.array(center, dtype=np.float64, copy=True)
-        self.target_span = float(np.clip(span, .00005 * AU, 160 * AU))
+        self.target_span = float(np.clip(span, .00005 * AU, 2000 * AU))
 
     def animate(self, dt, follow=None):
         if follow is not None:

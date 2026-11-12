@@ -30,6 +30,17 @@ def main(argv=None):
             'positions_m':state.positions.tolist()},indent=2))
         return 0
     try:
+        from importlib.metadata import PackageNotFoundError, version
+        from .runtime import desktop_compatibility_error
+        try:
+            pyside_version = version('PySide6')
+        except PackageNotFoundError:
+            pyside_version = None
+        if pyside_version:
+            compatibility_error = desktop_compatibility_error(sys.version_info, pyside_version)
+            if compatibility_error:
+                print(compatibility_error, file=sys.stderr)
+                return 1
         from PySide6.QtGui import QSurfaceFormat
         from PySide6.QtWidgets import QApplication
         from .ui.window import MainWindow
