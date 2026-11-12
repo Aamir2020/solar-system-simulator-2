@@ -11,6 +11,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from ..data.catalog import AU, BODIES
 from .camera import Camera, display_radii, pick_body
 from .labels import visible_labels
+from .overlay import TextOverlay
 from .textures import load_body_textures
 
 
@@ -52,6 +53,8 @@ class Viewport(QOpenGLWidget):
         self.dragged = False
         self.resources = []
         self._visible_labels = set()
+        self.text_overlay = TextOverlay(self)
+        self.text_overlay.setGeometry(self.rect())
         self.setAccessibleName("Solar system viewport")
         self.setAccessibleDescription("Scroll to zoom; drag to pan; click a body to inspect; double click to follow.")
 
@@ -154,25 +157,34 @@ class Viewport(QOpenGLWidget):
             self.fps = self.frames / (now - self.fps_time)
             self.frames = 0
             self.fps_time = now
-        painter = QPainter(self)
         if self.error or not self.ctx:
-            painter.fillRect(self.rect(), QColor('#0b121c'))
-            painter.setPen(QColor('#f4c28c'))
-            painter.drawText(self.rect().adjusted(40,40,-40,-40),
-                Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
-                self.error or 'Waiting for OpenGL 3.3…')
-            painter.end()
+            self.text_overlay.update()
             return
-        painter.beginNativePainting()
         try:
             self._draw_gpu()
         except Exception as exc:
             self.error = f"Rendering failed: {exc}"
             self.graphics_error.emit(self.error)
-        finally:
-            painter.endNativePainting()
-        self._draw_overlay(painter)
-        painter.end()
+        self.text_overlay.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.text_overlay.setGeometry(self.rect())
+        self.text_overlay.raise_()
+
+    def capture_image(self):
+        """Include raster labels when exporting the otherwise GL-only framebuffer."""
+        image = self.grabFramebuffer()
+        if not image.isNull():
+            image.setDevicePixelRatio(self.devicePixelRatioF())
+            image.setDotsPerMeterX(round(self.logicalDpiX() / .0254))
+            image.setDotsPerMeterY(round(self.logicalDpiY() / .0254))
+            painter = QPainter(image)
+            try:
+                self.text_overlay.paint_content(painter)
+            finally:
+                painter.end()
+        return image
 
     def _draw_gpu(self):
         w, h = self.width(), self.height()

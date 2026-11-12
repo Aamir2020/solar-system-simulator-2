@@ -301,12 +301,16 @@ class MainWindow(QMainWindow):
     def _select_from_list(self, index):
         if index >= 0:
             self.view.set_selection(index)
+            if not self.view.paused:
+                self.view.set_follow(True)
             self._update_inspector()
 
     def _select_from_view(self, index):
         self.body_list.blockSignals(True)
         self.body_list.setCurrentRow(-1 if index is None else index)
         self.body_list.blockSignals(False)
+        if not self.view.paused:
+            self.view.set_follow(index is not None)
         self._update_inspector()
 
     def _follow_changed(self, enabled):
@@ -326,6 +330,8 @@ class MainWindow(QMainWindow):
     def _set_paused(self, paused):
         self.runner.configure(paused=paused)
         self.view.paused = paused
+        if not paused:
+            self.view.set_follow(self.view.selection is not None)
         self.play_button.setText('▶  Play' if paused else 'Ⅱ  Pause')
         self.pause_badge.setText('● PAUSED' if paused else '● RUNNING')
 
@@ -472,7 +478,7 @@ class MainWindow(QMainWindow):
             return
         if not path.lower().endswith('.png'):
             path += '.png'
-        if not self.view.grabFramebuffer().save(path):
+        if not self.view.capture_image().save(path):
             QMessageBox.warning(self,'Screenshot failed','The image could not be saved.')
             return
         try:

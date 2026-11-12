@@ -29,6 +29,7 @@ This prints the initial-data source, simulated duration, integration runtime, en
 
 - Scroll to zoom toward the cursor; drag to pan.
 - Click a planet or use the searchable body list to inspect it. Double click to focus and follow.
+- Press Play with a body selected to follow it automatically. Selecting another body during playback switches the follow target; dragging to pan or clicking empty space releases the camera.
 - Camera presets: inner planets, outer planets, whole system, and selected body.
 - Inspector: mass, approximate physical radius, barycentric speed and X/Y coordinates, and distance from the Sun.
 - Display: image-mapped planetary surfaces, Sun glow, decorative Saturn rings, stable stars, fading historical trails, overlap-aware labels, and physical/exaggerated size modes.
