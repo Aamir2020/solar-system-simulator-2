@@ -8,7 +8,7 @@ from time import monotonic
 
 import numpy as np
 from PySide6.QtCore import QByteArray, QDate, QDateTime, QSettings, QSize, QStandardPaths, Qt, QTime, QTimer
-from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPainter, QPixmap
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDateTimeEdit, QFileDialog, QFrame, QHBoxLayout, QLabel,
@@ -22,6 +22,7 @@ from ..data.scenario import demo_scenario
 from ..physics.runner import SimulationRunner
 from ..rendering.viewport import Viewport
 from .style import STYLE
+from .icons import body_icon
 
 
 def label(text, name=None):
@@ -38,18 +39,6 @@ def button(text, callback, tooltip=None):
     if tooltip:
         widget.setToolTip(tooltip)
     return widget
-
-
-def body_icon(body):
-    pixmap = QPixmap(24,24)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setBrush(QColor(body.color))
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.drawEllipse(5,5,14,14)
-    painter.end()
-    return QIcon(pixmap)
 
 
 class MainWindow(QMainWindow):
@@ -128,7 +117,7 @@ class MainWindow(QMainWindow):
         column.addWidget(self.search)
         self.body_list = QListWidget()
         self.body_list.setAccessibleName('Celestial bodies')
-        self.body_list.setIconSize(QSize(24,24))
+        self.body_list.setIconSize(QSize(32,32))
         for body in BODIES:
             item = QListWidgetItem(body_icon(body), body.name)
             self.body_list.addItem(item)
