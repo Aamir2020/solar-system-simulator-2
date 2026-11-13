@@ -273,7 +273,7 @@ class Viewport(QOpenGLWidget):
                     painter.drawEllipse(QPointF(*p), radius, radius)
                 if not self.labels:
                     continue
-                text = BODIES[i].name + ('  / FOLLOWING' if self.follow and i==self.selection else '')
+                text = BODIES[i].name
                 rect = QRectF(p[0]+max(radii[i],5)+11, p[1]-8,
                               painter.fontMetrics().horizontalAdvance(text)+12, 22)
                 candidates[i] = (text, rect)

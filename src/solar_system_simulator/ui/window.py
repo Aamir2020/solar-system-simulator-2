@@ -1,4 +1,5 @@
 from datetime import datetime
+from importlib.resources import files
 import json
 from pathlib import Path
 from queue import Empty, Queue
@@ -6,8 +7,9 @@ from threading import Event, Thread
 from time import monotonic
 
 import numpy as np
-from PySide6.QtCore import QDate, QDateTime, QSettings, QSize, QStandardPaths, Qt, QTime, QTimer
+from PySide6.QtCore import QByteArray, QDate, QDateTime, QSettings, QSize, QStandardPaths, Qt, QTime, QTimer
 from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPainter, QPixmap
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDateTimeEdit, QFileDialog, QFrame, QHBoxLayout, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QProgressBar,
@@ -90,7 +92,9 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout(header)
         row.setContentsMargins(24,18,24,18)
         row.addWidget(label('◉ ORBITAL', 'brand'))
-        row.addWidget(label('SOLAR SYSTEM SIMULATOR  /  PYTHON N-BODY', 'subtitle'))
+        subtitle = label('SOLAR SYSTEM SIMULATOR', 'subtitle')
+        subtitle.setWordWrap(False)
+        row.addWidget(subtitle)
         row.addStretch()
         self.pause_badge = label('● PAUSED', 'eyebrow')
         row.addWidget(self.pause_badge)
@@ -241,6 +245,13 @@ class MainWindow(QMainWindow):
         self.date.setMaximumDateTime(QDateTime(QDate(2100,12,31),QTime(23,59,59)))
         self.date.setToolTip('TDB calendar date. No local timezone or UTC conversion is applied.')
         row.addWidget(self.date)
+        self.nasa_logo = QSvgWidget()
+        self.nasa_logo.load(QByteArray(files('solar_system_simulator').joinpath(
+            'assets/nasa-logo.svg').read_bytes()))
+        self.nasa_logo.setFixedSize(42, 36)
+        self.nasa_logo.setAccessibleName('NASA')
+        self.nasa_logo.setToolTip('NASA/JPL Horizons · source of initial positions and velocities')
+        row.addWidget(self.nasa_logo)
         self.load_button = button('Load NASA', self._load_nasa)
         row.addWidget(self.load_button)
         self.cancel_button = button('Cancel', self._cancel_load)
