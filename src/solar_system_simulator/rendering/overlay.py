@@ -2,6 +2,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
+from ..theme import COLORS
 
 
 class TextOverlay(QWidget):
@@ -18,8 +19,8 @@ class TextOverlay(QWidget):
     def paint_content(self, painter):
         viewport = self.viewport
         if viewport.error or viewport.ctx is None:
-            painter.fillRect(viewport.rect(), QColor('#0b121c'))
-            painter.setPen(QColor('#f4c28c'))
+            painter.fillRect(viewport.rect(), QColor(COLORS['space_center']))
+            painter.setPen(QColor(COLORS['error']))
             painter.drawText(
                 viewport.rect().adjusted(40, 40, -40, -40),
                 Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,

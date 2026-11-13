@@ -9,6 +9,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from ..data.catalog import AU, BODIES
+from ..theme import COLORS
 from .camera import Camera, display_radii, pick_body
 from .labels import visible_labels
 from .overlay import TextOverlay
@@ -201,6 +202,9 @@ class Viewport(QOpenGLWidget):
         bg['center'].value = (w/2, h/2)
         bg['extent'].value = max(w,h)/2
         bg['stars'].value = self.stars
+        bg['background_outer'].value = rgb(COLORS['space'])
+        bg['background_inner'].value = rgb(COLORS['space_center'])
+        bg['star_color'].value = rgb(COLORS['stars'])
         self.background_vao.render()
         if self.positions is None:
             return
@@ -268,7 +272,8 @@ class Viewport(QOpenGLWidget):
                 if not (0 < p[0] < w and 0 < p[1] < h):
                     continue
                 if i in (self.selection, self.hover):
-                    painter.setPen(QPen(QColor('#efc79b' if i==self.selection else '#849caf'),1))
+                    painter.setPen(QPen(QColor(COLORS['accent'] if i==self.selection
+                                               else COLORS['secondary']),1))
                     radius = max(radii[i], 5)+6
                     painter.drawEllipse(QPointF(*p), radius, radius)
                 if not self.labels:
@@ -285,9 +290,9 @@ class Viewport(QOpenGLWidget):
                     continue
                 text, rect = candidates[i]
                 priority = 0 if self.selection is None else self.selection
-                painter.setPen(QColor('#f0d0aa' if i==priority else '#adbace'))
+                painter.setPen(QColor(COLORS['text'] if i==priority else COLORS['secondary']))
                 painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter, text)
-        painter.setPen(QColor('#7d8da4'))
+        painter.setPen(QColor(COLORS['muted']))
         painter.drawText(22, 30, 'ORBITAL / LIVE SIMULATION')
         if self.snapshot is not None and not self.paused:
             painter.drawText(22, 50, f'Achieved {self.snapshot.achieved_rate / 86400:,.1f} simulated days / second')

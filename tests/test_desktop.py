@@ -15,6 +15,7 @@ class DesktopTests(unittest.TestCase):
         from PySide6.QtTest import QTest
         from PySide6.QtWidgets import QApplication
         from solar_system_simulator.ui.window import MainWindow
+        from solar_system_simulator.theme import COLORS
         def wait_until(predicate):
             deadline = monotonic() + 5
             while not predicate() and monotonic() < deadline:
@@ -58,7 +59,7 @@ class DesktopTests(unittest.TestCase):
                 reference.setDotsPerMeterY(composed.dotsPerMeterY())
                 painter = QPainter(reference)
                 painter.setFont(QFont('Sans Serif', 9))
-                painter.setPen(QColor('#7d8da4'))
+                painter.setPen(QColor(COLORS['muted']))
                 painter.drawText(22, 30, 'ORBITAL / LIVE SIMULATION')
                 painter.end()
                 ratio = composed.devicePixelRatio()
