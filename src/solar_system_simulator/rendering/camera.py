@@ -10,6 +10,8 @@ class Camera:
         self.span = 5 * AU  # Full visible height in metres.
         self.target_center = self.center.copy()
         self.target_span = self.span
+        self._zoom_anchor = None
+        self._zoom_offset = np.zeros(2, dtype=np.float64)
 
     def to_screen(self, positions, width, height):
         scale = height / self.span
@@ -18,28 +20,49 @@ class Camera:
     def to_world(self, point, width, height):
         return self.center + (np.asarray(point) - [width/2, height/2]) * [1, -1] * self.span/height
 
-    def zoom(self, point, factor, width, height):
-        before = self.to_world(point, width, height)
-        self.span = float(np.clip(self.span * factor, 0.00005 * AU, 2000 * AU))
-        after = self.to_world(point, width, height)
-        self.center += before - after
-        self.target_center = self.center.copy()
-        self.target_span = self.span
+    def zoom(self, point, factor, width, height, *, following=False):
+        # Wheel events change a target only; rendered coordinates change once per frame.
+        # Reversing the wheel should reverse the view immediately, not finish old inertia.
+        if (factor - 1) * (self.target_span - self.span) < 0:
+            self.target_span = self.span
+        self.target_span = float(np.clip(self.target_span * factor, .00005 * AU, 2000 * AU))
+        if following:
+            self._zoom_anchor = None
+        else:
+            self._zoom_anchor = self.to_world(point, width, height).copy()
+            self._zoom_offset = (np.asarray(point) - [width/2, height/2]) * [1, -1] / height
+            self.target_center = self._zoom_anchor - self._zoom_offset * self.target_span
 
     def pan(self, dx, dy, height):
+        self._zoom_anchor = None
         self.center += np.array([-dx, dy]) * self.span / max(height, 1)
         self.target_center = self.center.copy()
 
     def preset(self, center, span):
+        self._zoom_anchor = None
         self.target_center = np.array(center, dtype=np.float64, copy=True)
         self.target_span = float(np.clip(span, .00005 * AU, 2000 * AU))
 
     def animate(self, dt, follow=None):
+        dt = max(0., min(dt, .1))
+        alpha = 1 - math.exp(-dt * 18)
+        self.span = math.exp(math.log(self.span) +
+                             (math.log(self.target_span) - math.log(self.span)) * alpha)
+        if abs(self.span / self.target_span - 1) < 1e-6:
+            self.span = self.target_span
         if follow is not None:
-            self.target_center = np.array(follow, dtype=np.float64, copy=True)
-        alpha = 1 - math.exp(-min(dt, .1) * 10)
-        self.center += (self.target_center - self.center) * alpha
-        self.span += (self.target_span - self.span) * alpha
+            # Use the same interpolated body position as the renderer. Easing toward a
+            # moving position creates lag that becomes visible at high magnification.
+            self.center = np.array(follow, dtype=np.float64, copy=True)
+            self.target_center = self.center.copy()
+            self._zoom_anchor = None
+        elif self._zoom_anchor is not None:
+            self.center = self._zoom_anchor - self._zoom_offset * self.span
+            if self.span == self.target_span:
+                self.target_center = self.center.copy()
+                self._zoom_anchor = None
+        else:
+            self.center += (self.target_center - self.center) * (1 - math.exp(-dt * 10))
 
 
 def pick_body(screen_positions, radii, point):

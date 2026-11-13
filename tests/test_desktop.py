@@ -10,8 +10,8 @@ import unittest
                      'Set ORBITAL_DESKTOP_TESTS=1 on a host with Qt, ModernGL and a display')
 class DesktopTests(unittest.TestCase):
     def test_window_render_resize_selection_and_single_step(self):
-        from PySide6.QtCore import QEvent, QPointF, QRect, QSettings, Qt
-        from PySide6.QtGui import QColor, QFont, QMouseEvent, QPaintEngine, QPainter, QSurfaceFormat
+        from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSettings, Qt
+        from PySide6.QtGui import QColor, QFont, QMouseEvent, QPaintEngine, QPainter, QSurfaceFormat, QWheelEvent
         from PySide6.QtTest import QTest
         from PySide6.QtWidgets import QApplication
         from solar_system_simulator.ui.window import MainWindow
@@ -104,6 +104,26 @@ class DesktopTests(unittest.TestCase):
                 self.assertTrue(window.follow_button.isChecked())
                 wait_until(lambda: window.view.snapshot.elapsed > 0)
                 self.assertGreater(window.view.snapshot.elapsed, 0)
+                # Wheel and trackpad zoom must keep a moving, followed body centered.
+                import numpy as np
+                for pixels, angle in ((0, 120), (0, -120), (12, 0), (-12, 0)):
+                    camera = window.view.camera
+                    before_span = camera.span
+                    before_center = camera.center.copy()
+                    point = QPointF(80, 120)  # Deliberately away from the body.
+                    wheel = QWheelEvent(
+                        point, point, QPoint(0, pixels), QPoint(0, angle),
+                        Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+                        Qt.ScrollPhase.ScrollUpdate, False,
+                    )
+                    app.sendEvent(window.view, wheel)
+                    self.assertEqual(camera.span, before_span)
+                    np.testing.assert_array_equal(camera.center, before_center)
+                    wait_until(lambda: camera.span != before_span)
+                    screen = camera.to_screen(window.view.positions[3],
+                                              window.view.width(), window.view.height())
+                    np.testing.assert_allclose(screen,
+                        [window.view.width()/2, window.view.height()/2], atol=1e-8)
                 window.view.set_follow(False)
                 window.body_list.setCurrentRow(4)
                 self.assertEqual(window.view.selection, 4)

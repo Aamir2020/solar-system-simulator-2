@@ -315,9 +315,13 @@ class Viewport(QOpenGLWidget):
         return pick_body(points, radii, point)
 
     def wheelEvent(self, event):
+        pixels = event.pixelDelta().y()
+        delta = pixels / 200 if pixels else event.angleDelta().y() / 700
+        if not delta:
+            event.ignore()
+            return
         self.camera.zoom((event.position().x(),event.position().y()),
-                         math.exp(-event.angleDelta().y()/700),self.width(),self.height())
-        # Follow stays anchored to the selected body after the cursor-centered zoom.
+                         math.exp(-delta),self.width(),self.height(), following=self.follow)
         event.accept()
         self.update()
 

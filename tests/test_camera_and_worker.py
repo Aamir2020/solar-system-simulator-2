@@ -12,8 +12,56 @@ class CameraTests(unittest.TestCase):
         camera=Camera();point=np.array([123.,432.])
         before=camera.to_world(point,1200,800)
         camera.zoom(point,.3,1200,800)
+        camera.animate(1/60)
         np.testing.assert_allclose(camera.to_world(point,1200,800),before,rtol=1e-15)
         np.testing.assert_allclose(camera.to_screen(before,1200,800),point,atol=1e-12)
+
+    def test_free_zoom_keeps_cursor_anchor_for_every_animation_frame(self):
+        camera = Camera()
+        point = np.array([173., 627.])
+        anchor = camera.to_world(point, 1200, 800)
+        initial_span = camera.span
+        camera.zoom(point, .3, 1200, 800)
+        self.assertEqual(camera.span, initial_span)  # No wheel-event jump.
+        previous = camera.span
+        for _ in range(120):
+            camera.animate(1/60)
+            self.assertLessEqual(camera.span, previous)
+            np.testing.assert_allclose(camera.to_screen(anchor, 1200, 800), point, atol=1e-10)
+            previous = camera.span
+        self.assertAlmostEqual(camera.span / initial_span, .3)
+        camera.zoom(point, 2, 1200, 800)
+        for _ in range(120):
+            camera.animate(1/60)
+            np.testing.assert_allclose(camera.to_screen(anchor, 1200, 800), point, atol=1e-10)
+
+    def test_follow_zoom_does_not_pull_toward_an_off_center_cursor(self):
+        camera = Camera()
+        target = np.array([3*AU, -AU])
+        camera.animate(1/60, target)
+        for factor in (.8, .8, 1.2, 1.2):
+            camera.zoom([100, 650], factor, 1200, 800, following=True)
+            for _ in range(10):
+                target = target + [1e8, -2e8]
+                camera.animate(1/60, target)
+                np.testing.assert_array_equal(camera.to_screen(target, 1200, 800), [600, 400])
+
+    def test_zoom_reversal_and_animation_rate_independence(self):
+        camera = Camera()
+        camera.zoom([200, 300], .1, 1200, 800)
+        camera.animate(1/60)
+        span = camera.span
+        camera.zoom([200, 300], 1.2, 1200, 800)
+        camera.animate(1/60)
+        self.assertGreater(camera.span, span)
+        results = []
+        for fps in (30, 60, 144):
+            camera = Camera()
+            camera.zoom([200, 300], .2, 1200, 800)
+            for _ in range(fps//2):
+                camera.animate(1/fps)
+            results.append(camera.span)
+        np.testing.assert_allclose(results, results[0], rtol=1e-13)
 
     def test_pick_uses_y_and_nearest_body(self):
         points=np.array([[100,100],[100,200],[105,200]])
