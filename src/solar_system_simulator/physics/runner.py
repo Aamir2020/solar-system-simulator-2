@@ -39,9 +39,9 @@ class StepBudget:
 
 
 class SimulationRunner:
-    def __init__(self, state: State, dt=86400.0, trail_limit=1500):
+    def __init__(self, state: State | None = None, dt=86400.0, trail_limit=1500):
         self.condition = Condition()
-        self.state = state.copy()
+        self.state = state.copy() if state is not None else None
         self.dt = dt
         self.rate = 30 * 86400.0
         self.paused = True
@@ -49,11 +49,12 @@ class SimulationRunner:
         self.stopping = False
         self.single_steps = 0
         self.budget = StepBudget()
-        self.history = deque([self.state.positions.copy()], maxlen=trail_limit)
-        self.last_sample = state.elapsed
+        self.history = deque([] if state is None else [state.positions.copy()], maxlen=trail_limit)
+        self.last_sample = state.elapsed if state is not None else 0.
         self.output = Queue(maxsize=2)
         self.errors = Queue()
-        self._publish(0)
+        if state is not None:
+            self._publish(0)
         self.thread = Thread(target=self._run, name="n-body-simulation", daemon=True)
         self.thread.start()
 
@@ -64,7 +65,7 @@ class SimulationRunner:
             raise ValueError("Playback rate must be positive and finite.")
         with self.condition:
             if paused is not None:
-                self.paused = paused
+                self.paused = paused or self.state is None
             if rate is not None:
                 self.rate = rate
             if dt is not None:
@@ -74,6 +75,8 @@ class SimulationRunner:
 
     def single_step(self):
         with self.condition:
+            if self.state is None:
+                return
             self.paused = True
             self.single_steps = min(self.single_steps + 1, 10)
             self.condition.notify()
@@ -129,7 +132,7 @@ class SimulationRunner:
                 count = self.single_steps if self.paused else self.budget.consume(
                     wall, self.rate, self.dt)
                 self.single_steps = 0
-                if not count:
+                if self.state is None or not count:
                     continue
                 started = monotonic()
                 try:

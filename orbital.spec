@@ -4,8 +4,7 @@ from PyInstaller.utils.hooks import collect_submodules
 
 root = Path(SPECPATH)
 package = root / 'src' / 'solar_system_simulator'
-data = [(str(package / 'assets' / 'demo.json'), 'solar_system_simulator/assets')]
-data += [(str(package / 'assets' / name), 'solar_system_simulator/assets')
+data = [(str(package / 'assets' / name), 'solar_system_simulator/assets')
          for name in ('nasa-logo.svg', 'ATTRIBUTION.md')]
 data += [(str(asset), 'solar_system_simulator/assets/textures')
          for asset in (package / 'assets' / 'textures').iterdir() if asset.is_file()]

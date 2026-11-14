@@ -1,1 +1,1 @@
-"""Body metadata, reproducible offline scenario, and NASA Horizons client."""
+"""Body metadata, simulation scenarios, and NASA Horizons client."""

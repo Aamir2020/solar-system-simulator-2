@@ -28,6 +28,10 @@ class TextOverlay(QWidget):
             )
         else:
             viewport._draw_overlay(painter)
+            if viewport.positions is None:
+                painter.setPen(QColor(COLORS['secondary']))
+                painter.drawText(viewport.rect(), Qt.AlignmentFlag.AlignCenter,
+                                 'Choose an initial date and press Load NASA to begin.')
 
     def paintEvent(self, event):
         painter = QPainter(self)

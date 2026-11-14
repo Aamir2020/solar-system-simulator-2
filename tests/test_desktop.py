@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic, sleep
 import unittest
+from unittest.mock import patch
 
 
 @unittest.skipUnless(os.environ.get('ORBITAL_DESKTOP_TESTS') == '1',
@@ -16,6 +17,8 @@ class DesktopTests(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         from solar_system_simulator.ui.window import MainWindow
         from solar_system_simulator.theme import COLORS
+        from support import sample_scenario
+        from solar_system_simulator.data.horizons import HorizonsError
         def wait_until(predicate):
             deadline = monotonic() + 5
             while not predicate() and monotonic() < deadline:
@@ -37,6 +40,37 @@ class DesktopTests(unittest.TestCase):
                 QTest.qWait(500)
                 self.assertIsNone(window.view.error)
                 self.assertIsNotNone(window.view.ctx)
+                self.assertIsNone(window.scenario)
+                self.assertIsNone(window.view.snapshot)
+                self.assertFalse(window.play_button.isEnabled())
+                window._toggle_play()
+                window._step()
+                window._restart()
+                self.assertTrue(window.view.paused)
+                self.assertIsNone(window.runner.latest())
+                # Failed initial loading must not enable playback or supply fake state.
+                with patch('solar_system_simulator.ui.window.HorizonsClient.load',
+                           side_effect=HorizonsError('Test connection failure')), \
+                     patch('solar_system_simulator.ui.window.QMessageBox.warning') as warning:
+                    window.load_button.click()
+                    wait_until(lambda: warning.called)
+                self.assertIsNone(window.scenario)
+                self.assertIsNone(window.runner.state)
+                self.assertFalse(window.play_button.isEnabled())
+                # The real loader path receives a fixture only inside this network-free test.
+                scenario = sample_scenario()
+                with patch('solar_system_simulator.ui.window.HorizonsClient.load', return_value=scenario):
+                    window.load_button.click()
+                    wait_until(lambda: window.scenario is scenario)
+                wait_until(lambda: window.view.snapshot is not None)
+                self.assertTrue(window.play_button.isEnabled())
+                with patch('solar_system_simulator.ui.window.HorizonsClient.load',
+                           side_effect=HorizonsError('Test reload failure')), \
+                     patch('solar_system_simulator.ui.window.QMessageBox.warning') as warning:
+                    window.load_button.click()
+                    wait_until(lambda: warning.called)
+                self.assertIs(window.scenario, scenario)
+                self.assertTrue(window.play_button.isEnabled())
                 self.assertIsNotNone(window.view.snapshot)
                 self.assertTrue(window.view.frames > 0 or window.view.fps > 0)
                 window.resize(1200,760)

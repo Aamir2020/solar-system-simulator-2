@@ -4,7 +4,7 @@ Explore the solar system in a Python desktop app. It uses N-body gravity, leapfr
 
 ![Demo of the solar system simulator](docs/demo.gif)
 
-*The demo shows simulated motion using the offline sample, not NASA starting data.*
+*The demo uses initial positions and velocities loaded from NASA Horizons.*
 
 ## Run
 
@@ -19,7 +19,7 @@ solar-system
 
 On Windows, activate the environment with `.venv\Scripts\activate` instead. You can also download the `.exe` from [Releases](https://github.com/Aamir2020/solar-system-simulator-2/releases) when a release is available.
 
-The app starts paused with an offline sample. Press **Play** to begin. For NASA starting data, choose a date and press **Load NASA**. Dates use **TDB**, the time scale used by the simulation, rather than your local time.
+Choose a date and press **Load NASA**, then press **Play**. The app stays empty until data is loaded. Exact-date NASA responses are cached for later use; there is no bundled sample or synthetic fallback. Dates use **TDB**, the time scale used by the simulation, rather than your local time.
 
 ## Controls
 

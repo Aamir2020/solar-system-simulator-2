@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
 
 from ..data.catalog import AU, BODIES, DAY
 from ..data.horizons import Cancelled, HorizonsClient, HorizonsError
-from ..data.scenario import demo_scenario
 from ..physics.runner import SimulationRunner
 from ..rendering.viewport import Viewport
 from .style import STYLE
@@ -49,8 +48,8 @@ class MainWindow(QMainWindow):
         self.resize(1440, 900)
         self.setStyleSheet(STYLE)
         self.settings = QSettings('Aamir2020', 'SolarSystemSimulator2')
-        self.scenario = demo_scenario()
-        self.runner = SimulationRunner(self.scenario.state)
+        self.scenario = None
+        self.runner = SimulationRunner()
         self.view = Viewport()
         self.loading_thread = None
         self.load_cancel = Event()
@@ -65,7 +64,8 @@ class MainWindow(QMainWindow):
         self.body_list.setCurrentRow(0)
         self._restore_settings()
         self._show_source()
-        self.statusBar().showMessage('Offline educational demo loaded. Choose a TDB date and Load NASA for real initial conditions.')
+        self._set_data_controls(False)
+        self.statusBar().showMessage('Choose an initial date and load NASA data to begin.')
         self.timer = QTimer(self)
         self.timer.setInterval(16)
         self.timer.timeout.connect(self._tick)
@@ -198,8 +198,10 @@ class MainWindow(QMainWindow):
         self.play_button = button('▶  Play', self._toggle_play, 'Pause/play (Space)')
         self.play_button.setObjectName('primary')
         controls.addWidget(self.play_button)
-        controls.addWidget(button('Step', self._step, 'Advance one integration timestep (N)'))
-        controls.addWidget(button('Restart', self._restart, 'Return to the loaded initial conditions (R)'))
+        self.step_button = button('Step', self._step, 'Advance one integration timestep (N)')
+        self.restart_button = button('Restart', self._restart, 'Return to the loaded initial conditions (R)')
+        controls.addWidget(self.step_button)
+        controls.addWidget(self.restart_button)
         controls.addSpacing(12)
         controls.addWidget(label('SPEED', 'eyebrow'))
         self.speed = QComboBox()
@@ -220,7 +222,7 @@ class MainWindow(QMainWindow):
         self.timestep.setAccessibleName('Integration timestep')
         controls.addWidget(self.timestep)
         controls.addStretch()
-        self.sim_date = label('2026-01-01 00:00 TDB','metric')
+        self.sim_date = label('No NASA data loaded','metric')
         controls.addWidget(self.sim_date)
         column.addLayout(controls)
         row = QHBoxLayout()
@@ -246,7 +248,6 @@ class MainWindow(QMainWindow):
         self.cancel_button = button('Cancel', self._cancel_load)
         self.cancel_button.setVisible(False)
         row.addWidget(self.cancel_button)
-        row.addWidget(button('Offline demo', self._load_demo))
         self.progress = QProgressBar()
         self.progress.setRange(0,9)
         self.progress.setTextVisible(False)
@@ -318,7 +319,8 @@ class MainWindow(QMainWindow):
         self.follow_button.setText('Following selected' if enabled else 'Follow selected')
 
     def _toggle_follow(self):
-        self.view.set_follow(not self.view.follow)
+        if self.scenario is not None:
+            self.view.set_follow(not self.view.follow)
 
     def _focus_selection(self):
         if self.view.selection is not None:
@@ -327,7 +329,12 @@ class MainWindow(QMainWindow):
     def _configure(self):
         self.runner.configure(rate=float(self.speed.currentData()), dt=float(self.timestep.currentData()))
 
+    def _set_data_controls(self, enabled):
+        for control in (self.play_button, self.step_button, self.restart_button):
+            control.setEnabled(enabled)
+
     def _set_paused(self, paused):
+        paused = paused or self.scenario is None
         self.runner.configure(paused=paused)
         self.view.paused = paused
         if not paused:
@@ -343,6 +350,8 @@ class MainWindow(QMainWindow):
         self.runner.single_step()
 
     def _restart(self):
+        if self.scenario is None:
+            return
         self._set_paused(True)
         self.runner.reset(self.scenario.state)
         self.statusBar().showMessage('Restarted at the loaded initial epoch.')
@@ -351,16 +360,16 @@ class MainWindow(QMainWindow):
         self._set_paused(True)
         self.scenario = scenario
         self.runner.reset(scenario.state)
+        self._set_data_controls(True)
         self.view.set_follow(False)
         self.view.preset('Inner system')
         self._show_source()
 
-    def _load_demo(self):
-        self._cancel_load()
-        self._replace_scenario(demo_scenario())
-        self.statusBar().showMessage('Synthetic circular-orbit demo loaded. These are not NASA ephemerides.')
-
     def _show_source(self):
+        if self.scenario is None:
+            self.source_label.setText('NASA/JPL Horizons · awaiting data')
+            self.source_label.setToolTip('Load initial positions and velocities from NASA.')
+            return
         self.source_label.setText(self.scenario.source)
         self.source_label.setToolTip(self.scenario.source + '\nInitial epoch: ' + self.scenario.epoch + ' TDB')
 
@@ -429,8 +438,9 @@ class MainWindow(QMainWindow):
                 self._loading_finished()
                 self.statusBar().showMessage(value)
                 if kind == 'error':
-                    QMessageBox.warning(self,'NASA loading failed',
-                        value+'\n\nThe current scenario is retained. Retry, or use the labeled offline demo.')
+                    detail = ('The loaded NASA scenario is retained.' if self.scenario is not None
+                              else 'No simulation data is loaded.')
+                    QMessageBox.warning(self,'NASA loading failed', value+'\n\n'+detail+' Retry when the connection is available.')
         if monotonic()-self.last_inspector > .15:
             self._update_inspector()
             self.last_inspector = monotonic()
@@ -456,7 +466,7 @@ class MainWindow(QMainWindow):
                       'Y · barycentric': f'{position[1]/AU:+,.6f} AU'}
             for key,value in values.items():
                 self.metrics[key].setText(value)
-        self.follow_button.setEnabled(index is not None)
+        self.follow_button.setEnabled(index is not None and self.scenario is not None)
 
     def _graphics_error(self, message):
         self._set_paused(True)
@@ -469,8 +479,8 @@ class MainWindow(QMainWindow):
         self.inspector.setVisible(checked)
 
     def _screenshot(self):
-        if self.view.error or self.view.ctx is None:
-            QMessageBox.warning(self,'Screenshot unavailable','A working OpenGL context is required.')
+        if self.scenario is None or self.view.error or self.view.ctx is None:
+            QMessageBox.warning(self,'Screenshot unavailable','Load NASA data in a working viewport first.')
             return
         path,_ = QFileDialog.getSaveFileName(self,'Save simulation screenshot',
                     f'orbital-{datetime.now():%Y%m%d-%H%M%S}.png','PNG images (*.png)')
@@ -501,7 +511,6 @@ class MainWindow(QMainWindow):
             'The one-day timestep preserves the original baseline; choose smaller steps for convergence.\n\n'
             'NASA initializes the state; subsequent motion is integrated locally. '
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
-            'The offline demo uses synthetic circular orbits and is not NASA data. '
             'Trails show simulated history. Default radii are exaggerated.\n\n'
             'IMAGE CREDITS\nPlanet and Sun maps: Solar System Scope / INOVE, '
             'based on NASA imagery; unmodified 2K maps, CC BY 4.0. '

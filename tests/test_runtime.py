@@ -11,6 +11,20 @@ from solar_system_simulator.runtime import desktop_compatibility_error
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_headless_requires_explicit_nasa_epoch(self):
+        with patch('sys.stderr'), self.assertRaises(SystemExit) as exit:
+            main(['--headless'])
+        self.assertEqual(exit.exception.code, 2)
+
+    def test_headless_uses_nasa_client_instead_of_bundled_state(self):
+        from support import sample_scenario
+        scenario = sample_scenario()
+        with patch('solar_system_simulator.data.horizons.HorizonsClient.load', return_value=scenario) as load, \
+             patch('sys.stdout') as stdout:
+            self.assertEqual(main(['--headless', '--epoch', '2026-01-01', '--steps', '2']), 0)
+        load.assert_called_once_with('2026-01-01')
+        self.assertIn('relative_energy_change', str(stdout.write.call_args_list))
+
     def test_older_python_rejects_incompatible_bindings(self):
         for python in ((3, 10), (3, 11)):
             for pyside in ('6.12.0', '6.12.1'):

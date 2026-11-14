@@ -60,7 +60,7 @@ jobs:
           @'
           import subprocess
           result = subprocess.run(
-              [r'dist/Orbital.exe', '--headless', '--steps', '365'],
+              [r'dist/Orbital.exe', '--check-assets'],
               timeout=60, check=False,
           )
           if result.returncode:

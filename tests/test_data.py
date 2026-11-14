@@ -9,7 +9,7 @@ from solar_system_simulator.data.catalog import BODIES
 from solar_system_simulator.data.horizons import (
     Cancelled,HorizonsClient,HorizonsError,normalize_epoch,parameters,parse_vectors,
 )
-from solar_system_simulator.data.scenario import demo_scenario
+from support import sample_scenario
 
 
 def payload(jd=2461041.5):
@@ -86,9 +86,9 @@ class DataTests(unittest.TestCase):
             session.fail=True
             with self.assertRaisesRegex(HorizonsError,'Unable to load'):client.load('2026-01-01')
 
-    def test_demo_is_explicit_and_barycentric(self):
-        demo=demo_scenario()
-        self.assertIn('NOT NASA',demo.source)
+    def test_scenario_dates_and_fixture_barycenter(self):
+        demo=sample_scenario()
+        self.assertIn('not NASA',demo.source)
         state=demo.state
         total=state.masses.sum()
         np.testing.assert_allclose(np.sum(state.positions*state.masses[:,None],axis=0)/total,0,atol=1e-6)

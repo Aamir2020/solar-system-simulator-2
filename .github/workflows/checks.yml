@@ -37,8 +37,8 @@ jobs:
         run: xvfb-run -a -s '-screen 0 1280x1024x24' python scripts/check_desktop.py
       - name: Scientific, data, shader, and desktop smoke checks
         run: xvfb-run -a -s '-screen 0 1280x1024x24' python -m unittest discover -s tests -v
-      - name: Headless integration
-        run: solar-system --headless --steps 365
+      - name: Verify packaged runtime assets
+        run: solar-system --check-assets
       - name: Build source and wheel distributions
         run: python -m build
       - uses: actions/upload-artifact@v4

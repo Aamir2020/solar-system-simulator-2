@@ -8,16 +8,45 @@ from time import perf_counter
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Orbital · Python N-body solar system simulator')
-    parser.add_argument('--headless', action='store_true', help='Integrate the offline demo without a GUI')
+    parser.add_argument('--headless', action='store_true', help='Load NASA data and integrate without a GUI')
+    parser.add_argument('--epoch', help='Initial TDB calendar date for headless NASA loading')
+    parser.add_argument('--cache-dir', help='Directory for cached NASA responses')
+    parser.add_argument('--check-assets', action='store_true', help='Verify bundled graphics without a display or network')
     parser.add_argument('--steps', type=int, default=365, help='Headless integration step count')
     parser.add_argument('--dt', type=float, default=86400, help='Headless numerical timestep in seconds')
     args = parser.parse_args(argv)
     if args.steps < 0 or not math.isfinite(args.dt) or args.dt <= 0:
         parser.error('Steps must be nonnegative and dt must be positive.')
+    if args.check_assets:
+        from importlib.resources import files
+        from .data.catalog import BODIES
+        from .rendering.textures import image_data
+        try:
+            for body in BODIES:
+                image_data(body.name)
+            root = files('solar_system_simulator')
+            if '<svg' not in root.joinpath('assets/nasa-logo.svg').read_text():
+                raise ValueError('Invalid NASA logo')
+            for name in ('quad', 'body', 'background', 'trail_vertex', 'trail_fragment'):
+                if not root.joinpath(f'rendering/{name}.glsl').read_text().startswith('#version'):
+                    raise ValueError(f'Invalid shader: {name}')
+        except (ImportError, OSError, ValueError, KeyError) as exc:
+            print(f'Asset check failed: {exc}', file=sys.stderr)
+            return 1
+        print('Verified nine planet maps, NASA logo, and five shaders.')
+        return 0
     if args.headless:
-        from .data.scenario import demo_scenario
+        if not args.epoch:
+            parser.error('--headless requires --epoch, for example --epoch 2026-01-01')
+        from pathlib import Path
+        from .data.horizons import HorizonsClient, HorizonsError
         from .physics.system import energy, step
-        scenario = demo_scenario()
+        cache = args.cache_dir or Path.home() / '.cache/solar-system-simulator/horizons'
+        try:
+            scenario = HorizonsClient(cache).load(args.epoch)
+        except HorizonsError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
         state = scenario.state.copy()
         initial = energy(state)
         started = perf_counter()

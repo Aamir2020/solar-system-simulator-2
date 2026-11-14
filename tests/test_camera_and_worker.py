@@ -2,7 +2,7 @@ from time import monotonic, sleep
 import unittest
 import numpy as np
 from solar_system_simulator.data.catalog import AU, BODIES
-from solar_system_simulator.data.scenario import demo_scenario
+from support import sample_scenario
 from solar_system_simulator.physics.runner import SimulationRunner
 from solar_system_simulator.rendering.camera import Camera,display_radii,pick_body
 
@@ -69,7 +69,7 @@ class CameraTests(unittest.TestCase):
         self.assertIsNone(pick_body(points,np.array([5,5,5]),[100,150]))
 
     def test_display_size_does_not_mutate_physics(self):
-        state=demo_scenario().state
+        state=sample_scenario().state
         initial=state.positions.copy()
         camera=Camera();camera.pan(100,100,800);camera.zoom([400,300],.1,800,600)
         exaggerated=display_radii(BODIES,camera.span,600)
@@ -79,6 +79,21 @@ class CameraTests(unittest.TestCase):
 
 
 class WorkerTests(unittest.TestCase):
+    def test_empty_runner_cannot_advance_until_data_is_loaded(self):
+        runner = SimulationRunner()
+        try:
+            self.assertIsNone(runner.latest())
+            runner.configure(paused=False)
+            runner.single_step()
+            self.assertTrue(runner.paused)
+            self.assertIsNone(runner.state)
+            self.assertIsNone(runner.latest())
+            runner.reset(sample_scenario().state)
+            self.assertIsNotNone(runner.latest())
+            runner.single_step()
+            self.wait_for(runner, lambda snapshot: snapshot.elapsed == 86400)
+        finally:
+            runner.close()
     def wait_for(self,runner,predicate):
         until=monotonic()+2
         while monotonic()<until:
@@ -88,7 +103,7 @@ class WorkerTests(unittest.TestCase):
         self.fail('Simulation worker did not publish the expected state')
 
     def test_step_reset_generation_and_readonly_snapshots(self):
-        state=demo_scenario().state
+        state=sample_scenario().state
         runner=SimulationRunner(state)
         try:
             initial=runner.latest()
@@ -105,7 +120,7 @@ class WorkerTests(unittest.TestCase):
         self.assertFalse(runner.thread.is_alive())
 
     def test_bounded_history_and_pause(self):
-        runner=SimulationRunner(demo_scenario().state,trail_limit=3)
+        runner=SimulationRunner(sample_scenario().state,trail_limit=3)
         try:
             runner.latest()
             runner.configure(paused=False,rate=10000*86400)
