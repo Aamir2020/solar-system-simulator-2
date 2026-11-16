@@ -50,4 +50,7 @@ python -m unittest discover -s tests -v
 
 ## Credits
 
-Code by Aamir Zekaria Ali, under the [MIT license](LICENSE). Starting data comes from [NASA/JPL Horizons](https://ssd-api.jpl.nasa.gov/doc/horizons.html). Planet maps are by Solar System Scope / INOVE, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [texture credits](src/solar_system_simulator/assets/textures/ATTRIBUTION.md).
+Code by Aamir Zekaria Ali, under the [MIT license](LICENSE). 
+Starting data comes from [NASA/JPL Horizons](https://ssd-api.jpl.nasa.gov/doc/horizons.html). 
+Planet maps are by Solar System Scope / INOVE, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). 
+See [texture credits](src/solar_system_simulator/assets/textures/ATTRIBUTION.md).
