@@ -6,7 +6,17 @@ Explore the solar system in a Python desktop app. It uses N-body gravity, leapfr
 
 *The demo uses initial positions and velocities loaded from NASA Horizons.*
 
-## Run
+## Install on Windows
+
+1. Open the [latest release](https://github.com/Aamir2020/solar-system-simulator-2/releases/latest).
+2. Under **Assets**, download `Solar-System-Simulator-windows-x64.exe`.
+3. Open the downloaded file to start the app. You do not need to install Python.
+
+You need 64-bit Windows and a graphics driver with OpenGL 3.3 support.
+
+Choose a date and press **Load NASA**, then press **Play**. The app stays empty until data is loaded. Exact-date NASA responses are cached for later use; there is no bundled sample or synthetic fallback. Dates use **TDB**, the time scale used by the simulation, rather than your local time.
+
+## Run from source
 
 You need Python 3.10+ and a graphics driver with OpenGL 3.3 support.
 
@@ -17,9 +27,7 @@ python -m pip install -e .
 solar-system
 ```
 
-On Windows, activate the environment with `.venv\Scripts\activate` instead. You can also download the `.exe` from [Releases](https://github.com/Aamir2020/solar-system-simulator-2/releases) when a release is available.
-
-Choose a date and press **Load NASA**, then press **Play**. The app stays empty until data is loaded. Exact-date NASA responses are cached for later use; there is no bundled sample or synthetic fallback. Dates use **TDB**, the time scale used by the simulation, rather than your local time.
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
 
 ## Controls
 
@@ -38,15 +46,6 @@ Planet sizes are enlarged by default. The simulation is 2D and does not include 
 ```bash
 python -m pip install -e '.[dev]'
 python -m unittest discover -s tests -v
-```
-
-## Windows releases
-
-Push a tag to build a Windows `.exe` and publish it on GitHub Releases:
-
-```bash
-git tag -a v2.0.1 -m "Release v2.0.1"
-git push origin v2.0.1
 ```
 
 ## Credits
