@@ -74,7 +74,10 @@ class SceneRenderer:
         ctx.clear(*rgb(COLORS['space']), 1., depth=1.)
         ctx.disable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
         ctx.enable(moderngl.BLEND)
-        ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
+        # Blend translucency inside the scene while preserving its opaque Qt backing.
+        # Applying the RGB source factor to alpha would punch holes in the widget.
+        ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA,
+                          moderngl.ONE, moderngl.ONE_MINUS_SRC_ALPHA)
         right, up, back = camera.basis
         tangent = math.tan(camera.fov/2)
         field = (tangent*width/height, tangent)

@@ -12,7 +12,7 @@ from unittest.mock import patch
 class DesktopTests(unittest.TestCase):
     def test_window_render_resize_selection_and_single_step(self):
         from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSettings, Qt
-        from PySide6.QtGui import QColor, QFont, QMouseEvent, QPaintEngine, QPainter, QSurfaceFormat, QWheelEvent
+        from PySide6.QtGui import QColor, QFont, QImage, QMouseEvent, QPaintEngine, QPainter, QSurfaceFormat, QWheelEvent
         from PySide6.QtTest import QTest
         from PySide6.QtWidgets import QApplication
         from solar_system_simulator.ui.window import MainWindow
@@ -88,6 +88,9 @@ class DesktopTests(unittest.TestCase):
                 QTest.qWait(100)
                 image=window.view.grabFramebuffer()
                 self.assertFalse(image.isNull())
+                rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
+                self.assertEqual(min(bytes(rgba.constBits())[3::4]), 255,
+                                 'Translucent scene effects must not make the Qt viewport transparent')
                 output=Path(directory)/'viewport.png'
                 self.assertTrue(image.save(str(output)))
                 self.assertGreater(output.stat().st_size,1000)

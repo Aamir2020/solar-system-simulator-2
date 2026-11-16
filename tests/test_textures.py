@@ -118,3 +118,20 @@ class TextureRenderingTests(unittest.TestCase):
         positions[3, 2] *= -1
         front = self.draw(camera, positions, effects=False, stars=False)
         self.assertFalse(np.array_equal(alone[80, 80], front[80, 80]))
+
+    def test_translucent_rings_and_sun_glow_keep_the_viewport_opaque(self):
+        import numpy as np
+
+        from scripts.benchmark_physics import load_scenario
+        from solar_system_simulator.rendering.camera import Camera
+        state = load_scenario().state
+        camera = Camera()
+        for index in (0, 6):
+            with self.subTest(body=BODIES[index].name):
+                camera.center = state.positions[index].copy()
+                camera.span = BODIES[index].radius*6
+                baseline = self.draw(camera, state.positions, physical=True, effects=False)
+                image = self.draw(camera, state.positions, physical=True, effects=True)
+                self.assertGreater(np.count_nonzero(image[:, :, :3] != baseline[:, :, :3]), 100)
+                self.assertTrue(np.all(image[:, :, 3] == 255),
+                                f'Transparent viewport pixels: minimum alpha {image[:, :, 3].min()}')
