@@ -1,4 +1,5 @@
 """Small, image-mapped globes for the body explorer, independent of OpenGL."""
+from importlib.resources import files
 import numpy as np
 from PySide6.QtGui import QIcon, QImage, QPixmap
 
@@ -25,4 +26,11 @@ def body_icon(body):
     image = QImage(globe.data, size, size, size*4, QImage.Format.Format_RGBA8888).copy()
     pixmap = QPixmap.fromImage(image)
     pixmap.setDevicePixelRatio(3)
+    return QIcon(pixmap)
+
+
+def application_icon():
+    pixmap = QPixmap()
+    if not pixmap.loadFromData(files('solar_system_simulator').joinpath('assets/app-icon.png').read_bytes()):
+        raise ValueError('Unable to load the application icon.')
     return QIcon(pixmap)

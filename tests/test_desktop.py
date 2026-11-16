@@ -38,6 +38,8 @@ class DesktopTests(unittest.TestCase):
             try:
                 window.show()
                 QTest.qWait(500)
+                self.assertEqual(window.windowTitle(), 'Solar System Simulator')
+                self.assertFalse(window.windowIcon().isNull())
                 self.assertIsNone(window.view.error)
                 self.assertIsNotNone(window.view.ctx)
                 self.assertIsNone(window.scenario)
@@ -94,7 +96,7 @@ class DesktopTests(unittest.TestCase):
                 painter = QPainter(reference)
                 painter.setFont(QFont('Sans Serif', 9))
                 painter.setPen(QColor(COLORS['muted']))
-                painter.drawText(22, 30, 'ORBITAL / LIVE SIMULATION')
+                painter.drawText(22, 30, 'SOLAR SYSTEM SIMULATOR')
                 painter.end()
                 ratio = composed.devicePixelRatio()
                 header = QRect(round(20*ratio), round(14*ratio), round(280*ratio), round(20*ratio))

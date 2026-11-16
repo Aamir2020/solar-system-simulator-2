@@ -1,0 +1,10 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "prompt": "Use case: logo-brand. Asset type: square desktop application icon for Solar System Simulator. Create a polished, readable icon inspired by the ancient Greek Antikythera mechanism: a compact circular bronze astronomical gearwork with interlocking toothed cogs and delicate concentric orbit rings, warm aged brass with restrained verdigris details. A small luminous Sun sits at the center, with exactly eight distinct planetary spheres arranged around the mechanism: tiny gray Mercury, cream Venus, blue and green Earth, rust-red Mars, striped Jupiter, ringed pale-gold Saturn, pale-cyan Uranus, deep-blue Neptune. Interpret this as a beautiful miniature mechanical orrery with the visual character of the Antikythera mechanism. Front-facing, nearly orthographic, centered composition, strong outer silhouette and large clean forms readable as an app icon at 32 pixels. Rich but restrained dimensional metal shading. Keep all gearwork and planet spheres within the square with generous transparent padding. Transparent background with genuine alpha, no background tile, no pedestal, no text, no letters, no border frame, no watermark. One icon only.",
+  "source": "app-icon.png",
+  "derived_formats": [
+    "app-icon.ico",
+    "app-icon.icns"
+  ],
+  "notes": "Original generated PNG preserved with transparency; ICO and ICNS are resized format conversions."
+}

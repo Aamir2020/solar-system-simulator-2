@@ -5,9 +5,11 @@ import math
 import sys
 from time import perf_counter
 
+from . import APP_NAME
+
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Orbital · Python N-body solar system simulator')
+    parser = argparse.ArgumentParser(description=APP_NAME)
     parser.add_argument('--headless', action='store_true', help='Load NASA data and integrate without a GUI')
     parser.add_argument('--epoch', help='Initial TDB calendar date for headless NASA loading')
     parser.add_argument('--cache-dir', help='Directory for cached NASA responses')
@@ -25,6 +27,9 @@ def main(argv=None):
             for body in BODIES:
                 image_data(body.name)
             root = files('solar_system_simulator')
+            from PySide6.QtGui import QImage
+            if QImage.fromData(root.joinpath('assets/app-icon.png').read_bytes()).isNull():
+                raise ValueError('Invalid application icon')
             if '<svg' not in root.joinpath('assets/nasa-logo.svg').read_text():
                 raise ValueError('Invalid NASA logo')
             for name in ('quad', 'body', 'background', 'trail_vertex', 'trail_fragment'):
@@ -33,7 +38,7 @@ def main(argv=None):
         except (ImportError, OSError, ValueError, KeyError) as exc:
             print(f'Asset check failed: {exc}', file=sys.stderr)
             return 1
-        print('Verified nine planet maps, NASA logo, and five shaders.')
+        print('Verified nine planet maps, application icon, NASA logo, and five shaders.')
         return 0
     if args.headless:
         if not args.epoch:
@@ -83,9 +88,14 @@ def main(argv=None):
     fmt.setDepthBufferSize(24)
     fmt.setSwapInterval(1)
     QSurfaceFormat.setDefaultFormat(fmt)
+    if sys.platform == 'win32':
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Aamir2020.SolarSystemSimulator')
     app = QApplication(sys.argv[:1])
-    app.setApplicationName('Orbital')
+    app.setApplicationName(APP_NAME)
+    app.setApplicationDisplayName(APP_NAME)
     app.setOrganizationName('Aamir2020')
     window = MainWindow()
+    app.setWindowIcon(window.windowIcon())
     window.show()
     return app.exec()

@@ -293,7 +293,7 @@ class Viewport(QOpenGLWidget):
                 painter.setPen(QColor(COLORS['text'] if i==priority else COLORS['secondary']))
                 painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter, text)
         painter.setPen(QColor(COLORS['muted']))
-        painter.drawText(22, 30, 'ORBITAL / LIVE SIMULATION')
+        painter.drawText(22, 30, 'SOLAR SYSTEM SIMULATOR')
         if self.snapshot is not None and not self.paused:
             painter.drawText(22, 50, f'Achieved {self.snapshot.achieved_rate / 86400:,.1f} simulated days / second')
         mode = 'Physical radii' if self.physical else 'Exaggerated radii · distances to scale'

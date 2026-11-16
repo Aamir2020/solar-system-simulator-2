@@ -4,7 +4,7 @@ STYLE = f"""
 QMainWindow, QWidget {{ background: {c['window']}; color: {c['text']}; font-family: 'DejaVu Sans', 'Segoe UI', sans-serif; font-size: 12px; }}
 QLabel {{ background: transparent; }}
 QWidget#header {{ background: {c['window']}; border: 1px solid {c['border_control']}; }}
-QLabel#brand {{ font-size: 21px; font-weight: 600; letter-spacing: 5px; color: {c['text']}; }}
+QLabel#brand {{ font-size: 21px; font-weight: 600; letter-spacing: 1px; color: {c['text']}; }}
 QLabel#subtitle {{ color: {c['secondary']}; font-size: 11px; }}
 QLabel#eyebrow {{ color: {c['muted']}; font-size: 10px; letter-spacing: 2px; }}
 QLabel#title {{ font-size: 25px; color: {c['text']}; }}

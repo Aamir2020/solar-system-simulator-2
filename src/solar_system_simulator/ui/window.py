@@ -16,12 +16,13 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QSlider, QSplitter, QVBoxLayout, QWidget,
 )
 
+from .. import APP_NAME
 from ..data.catalog import AU, BODIES, DAY
 from ..data.horizons import Cancelled, HorizonsClient, HorizonsError
 from ..physics.runner import SimulationRunner
 from ..rendering.viewport import Viewport
 from .style import STYLE
-from .icons import body_icon
+from .icons import application_icon, body_icon
 
 
 def label(text, name=None):
@@ -43,7 +44,8 @@ def button(text, callback, tooltip=None):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Orbital · Solar System Simulator')
+        self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(application_icon())
         self.setMinimumSize(980, 660)
         self.resize(1440, 900)
         self.setStyleSheet(STYLE)
@@ -80,10 +82,14 @@ class MainWindow(QMainWindow):
         header.setObjectName('header')
         row = QHBoxLayout(header)
         row.setContentsMargins(24,18,24,18)
-        row.addWidget(label('◉ ORBITAL', 'brand'))
-        subtitle = label('SOLAR SYSTEM SIMULATOR', 'subtitle')
-        subtitle.setWordWrap(False)
-        row.addWidget(subtitle)
+        icon_label = QLabel()
+        icon_label.setPixmap(self.windowIcon().pixmap(QSize(40,40)))
+        icon_label.setFixedSize(44,44)
+        icon_label.setAccessibleName('Solar System Simulator icon')
+        row.addWidget(icon_label)
+        title = label(APP_NAME, 'brand')
+        title.setWordWrap(False)
+        row.addWidget(title)
         row.addStretch()
         self.pause_badge = label('● PAUSED', 'eyebrow')
         row.addWidget(self.pause_badge)
@@ -483,7 +489,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self,'Screenshot unavailable','Load NASA data in a working viewport first.')
             return
         path,_ = QFileDialog.getSaveFileName(self,'Save simulation screenshot',
-                    f'orbital-{datetime.now():%Y%m%d-%H%M%S}.png','PNG images (*.png)')
+                    f'solar-system-simulator-{datetime.now():%Y%m%d-%H%M%S}.png','PNG images (*.png)')
         if not path:
             return
         if not path.lower().endswith('.png'):
@@ -502,7 +508,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f'Screenshot and provenance saved to {path}')
 
     def _help(self):
-        QMessageBox.information(self,'Orbital · Controls & model',
+        QMessageBox.information(self,APP_NAME + ' · Controls & model',
             'NAVIGATION\nScroll: zoom toward cursor · Drag: pan\nClick: inspect · Double click: focus and follow\n'
             'H: home · F: follow · I: inspector · F11: fullscreen\n\n'
             'SIMULATION\nSpace: play/pause · N: one step · R: restart\nCtrl+S: screenshot · F1: help\n\n'

@@ -1,4 +1,4 @@
-# Solar System Simulator 2
+# Solar System Simulator
 
 Explore the solar system in a Python desktop app. It uses N-body gravity, leapfrog integration, NASA Horizons data, and GPU graphics.
 
