@@ -1,4 +1,4 @@
-"""Re-download the attributed, unmodified Solar System Scope 2K planet maps.
+"""Re-download attributed, unmodified Solar System Scope planet and environment maps.
 
 Run with the project's environment from any directory. Downloads are validated with
 Qt before replacing existing assets. Runtime never needs to download these files.
@@ -20,6 +20,10 @@ MAPS = {
     'Saturn': '2k_saturn.jpg',
     'Uranus': '2k_uranus.jpg',
     'Neptune': '2k_neptune.jpg',
+    'Earth night': '2k_earth_nightmap.jpg',
+    'Earth clouds': '2k_earth_clouds.jpg',
+    'Saturn rings': '2k_saturn_ring_alpha.png',
+    'Sky': '8k_stars_milky_way.jpg',
 }
 BASE = 'https://www.solarsystemscope.com/textures/download/'
 
@@ -34,8 +38,9 @@ def main():
             response.raise_for_status()
             data = response.content
             image = QImage.fromData(data)
-            if image.isNull() or image.width() != 2048 or image.height() != 1024:
-                raise ValueError(f'{body}: expected a 2048×1024 equirectangular image')
+            expected = (8192, 4096) if body == 'Sky' else (2048, 125) if body == 'Saturn rings' else (2048, 1024)
+            if image.isNull() or (image.width(), image.height()) != expected:
+                raise ValueError(f'{body}: expected an image with dimensions {expected}')
             (directory / filename).write_bytes(data)
             manifest[body] = {'file': filename, 'url': BASE + filename,
                               'sha256': sha256(data).hexdigest(),

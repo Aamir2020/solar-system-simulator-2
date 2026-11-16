@@ -1,42 +1,52 @@
 #version 330
 in vec2 uv;
+in vec3 normal;
+in vec3 view_pos;
+in vec3 local_pos;
 out vec4 frag;
-uniform vec3 color;
+uniform sampler2D surface_map;
+uniform sampler2D night_map;
+uniform sampler2D cloud_map;
 uniform int kind;
 uniform bool effects;
-uniform vec2 light_dir;
-uniform sampler2D surface_map;
-const float PI = 3.141592653589793;
+uniform vec3 light_dir;
+uniform vec3 light_local;
+uniform float log_far;
 void main() {
-    vec2 q = uv * 2.25;
-    float r = length(q);
-    float aa = max(fwidth(r), .002);
-    vec3 c = color;
-    float alpha = 0.;
-    // Decorative Saturn rings surround the image-mapped planetary disc.
-    if (kind == 6 && effects) {
-        vec2 ring = vec2(q.x*.92 + q.y*.38, -q.x*.38 + q.y*.92);
-        float ringR = length(vec2(ring.x, ring.y*2.9));
-        float band = smoothstep(1.3, 1.36, ringR) * (1. - smoothstep(1.95, 2.02, ringR));
-        float gap = 1. - .65 * exp(-pow((ringR-1.75)/.035, 2.));
-        alpha = band * gap * .7;
-        c = color * (.82 + .1 * sin(ringR*190.));
+    if (view_pos.z <= 0.) discard;
+    vec4 sample_color = texture(surface_map, uv);
+    vec3 base = pow(sample_color.rgb, vec3(2.2));
+    vec3 n = normalize(normal);
+    vec3 v = normalize(-view_pos);
+    float sun = dot(n, normalize(light_dir));
+    float alpha = 1.;
+    vec3 color;
+    if (kind == 9) {
+        float t = -dot(local_pos, light_local);
+        float shadow = t > 0. ? mix(.15, 1., smoothstep(.9, 1.1, dot(local_pos, local_pos)-t*t)) : 1.;
+        float lighting = effects ? (.12 + .88*abs(sun))*shadow : .85;
+        color = base * lighting;
+        alpha = sample_color.a * .92;
+    } else if (kind == 0) {
+        color = base * 1.5;
+    } else {
+        float diffuse = effects ? .018 + 1.15*max(sun, 0.) : .6 + .4*max(dot(n, v), 0.);
+        float cloud = 0.;
+        if (kind == 3 && effects) {
+            cloud = pow(texture(cloud_map, uv).r, 1.5) * .72;
+            base = mix(base, vec3(.88), cloud);
+        }
+        color = base * diffuse;
+        if (kind == 3 && effects) {
+            float night = 1. - smoothstep(-.18, .12, sun);
+            color += pow(texture(night_map, uv).rgb, vec3(2.2)) * night * (1.-cloud) * 1.4;
+            float ocean = smoothstep(base.r*1.2, base.r*1.2+.07, base.b) * (1.-cloud);
+            color += vec3(.25) * ocean * pow(max(dot(n, normalize(normalize(light_dir)+v)), 0.), 48.) * max(sun, 0.);
+            float rim = pow(1. - max(dot(n, v), 0.), 5.) * smoothstep(-.3, .5, sun);
+            color += vec3(.025, .09, .22) * rim;
+        }
     }
-    if (kind == 0 && effects) {
-        alpha = exp(-r*r*1.7) * .38;
-    }
-    if (r < 1. + aa) {
-        vec3 n = vec3(q.x, -q.y, sqrt(max(0., 1.-r*r)));
-        // Bundled equirectangular maps arrive top-row first from QImage.
-        vec2 tex_uv = vec2(.5 + atan(n.x, n.z)/(2.*PI),
-                           .5 - asin(clamp(n.y, -1., 1.))/PI);
-        vec3 base = texture(surface_map, tex_uv).rgb;
-        float diffuse = kind == 0 ? 1. :
-            (effects ? .16 + .84*max(0., dot(n, normalize(vec3(light_dir, .6))))
-                     : .65 + .35*n.z);
-        c = base * diffuse;
-        alpha = 1. - smoothstep(1.-aa, 1.+aa, r);
-    }
-    if (alpha < .002) discard;
-    frag = vec4(c, alpha);
+    if (alpha < .005) discard;
+    frag = vec4(pow(max(color, vec3(0)), vec3(1./2.2)), alpha);
+    gl_FragDepth = log2(1. + view_pos.z) / log_far;
 }

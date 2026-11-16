@@ -2,7 +2,8 @@
 
 The simulator uses direct, three-dimensional Newtonian gravity and fixed-step
 kick–drift–kick leapfrog. NASA's X/Y/Z positions and velocities remain in the
-physics state. The camera projects X/Y for the two-dimensional display.
+physics state. The camera renders the state in perspective; the benchmark is
+independent of graphics and camera settings.
 
 ## Choosing the default step
 

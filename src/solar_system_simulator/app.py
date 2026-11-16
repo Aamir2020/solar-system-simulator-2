@@ -25,24 +25,25 @@ def main(argv=None):
         parser.error('Steps must be nonnegative and dt must be positive.')
     if args.check_assets:
         from importlib.resources import files
-        from .data.catalog import BODIES
-        from .rendering.textures import image_data
+        from .rendering.textures import image_data, texture_manifest
         try:
-            for body in BODIES:
-                image_data(body.name)
+            manifest = texture_manifest()
+            for name in manifest:
+                image_data(name)
             root = files('solar_system_simulator')
             from PySide6.QtGui import QImage
             if QImage.fromData(root.joinpath('assets/app-icon.png').read_bytes()).isNull():
                 raise ValueError('Invalid application icon')
             if '<svg' not in root.joinpath('assets/nasa-logo.svg').read_text():
                 raise ValueError('Invalid NASA logo')
-            for name in ('quad', 'body', 'background', 'trail_vertex', 'trail_fragment'):
+            for name in ('quad', 'sphere_vertex', 'body', 'background_vertex', 'background',
+                         'glow', 'trail_vertex', 'trail_fragment'):
                 if not root.joinpath(f'rendering/{name}.glsl').read_text().startswith('#version'):
                     raise ValueError(f'Invalid shader: {name}')
         except (ImportError, OSError, ValueError, KeyError) as exc:
             print(f'Asset check failed: {exc}', file=sys.stderr)
             return 1
-        print('Verified nine planet maps, application icon, NASA logo, and five shaders.')
+        print('Verified thirteen planet/environment maps, application icon, NASA logo, and eight shaders.')
         return 0
     if args.headless:
         if not args.epoch:

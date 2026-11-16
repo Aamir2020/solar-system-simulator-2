@@ -1,6 +1,6 @@
 # Solar System Simulator
 
-Explore the solar system in a Python desktop app. It uses N-body gravity, leapfrog integration, NASA Horizons data, and GPU graphics.
+Explore the solar system in a Python desktop app. It uses N-body gravity, leapfrog integration, NASA Horizons data, and 3D GPU graphics with textured planets and a Milky Way skybox.
 
 ![Demo of the solar system simulator](docs/demo.gif)
 
@@ -31,15 +31,19 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead.
 
 ## Controls
 
-- Scroll to zoom. Drag to pan.
+- Scroll to zoom. Drag to orbit the camera.
+- Shift-drag, middle drag, or right drag to pan.
 - Click a planet to select it. Press **Play** to follow it.
 - Select another planet while playing to follow that planet.
 - Double click a planet to focus on it.
 - Use the side panels to change the view, labels, trails, and planet sizes.
 - Press **Space** to pause, **H** to reset the camera, and **F1** for help.
+- Press **T** for the top-down view or **V** for the 3D view.
 - Press **Ctrl+S** to save a screenshot.
 
-Planet sizes are enlarged by default. Physics runs in 3D; the window shows a 2D view. NASA provides the starting positions and velocities; Python calculates the motion after that. Moons, collisions, and relativity are not included.
+Planet sizes are enlarged by default. Physics and graphics run in 3D. NASA provides the starting positions and velocities; Python calculates the motion after that. Moons, collisions, and relativity are not included. Body axes are illustrative, and the skybox is a visual backdrop.
+
+Earth has cloud and night-light maps. Saturn has textured 3D rings. Adjust sky brightness in the right panel.
 
 The default physics step is **1 hour**. Larger steps allow faster playback with more orbital error.
 

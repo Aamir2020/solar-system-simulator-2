@@ -84,10 +84,11 @@ class CameraTests(unittest.TestCase):
         camera = Camera()
         camera.preset(positions[0], .2*AU)
         camera.animate(1/60, follow=positions[0])
-        np.testing.assert_array_equal(camera.center, positions[0, :2])
-        np.testing.assert_array_equal(camera.target_center, positions[0, :2])
-        np.testing.assert_array_equal(camera.to_screen(positions, 1200, 800),
-                                      [[600, 400], [600, 400]])
+        np.testing.assert_array_equal(camera.center, positions[0])
+        np.testing.assert_array_equal(camera.target_center, positions[0])
+        points = camera.to_screen(positions, 1200, 800)
+        np.testing.assert_array_equal(points[0], [600, 400])
+        self.assertGreater(np.linalg.norm(points[1] - points[0]), 100)
         np.testing.assert_array_equal(positions, original)
 
 

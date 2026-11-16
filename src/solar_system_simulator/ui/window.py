@@ -133,7 +133,8 @@ class MainWindow(QMainWindow):
         column.addWidget(self.body_list,1)
         column.addWidget(label('CAMERA', 'eyebrow'))
         self.camera_choice = QComboBox()
-        self.camera_choice.addItems(['Inner system','Outer system','Whole system','Selected'])
+        self.camera_choice.addItems(['Inner system','Outer system','Whole system','Selected',
+                                     'Top-down view','3D view'])
         self.camera_choice.activated.connect(lambda _: self.view.preset(self.camera_choice.currentText()))
         self.camera_choice.setAccessibleName('Camera preset')
         column.addWidget(self.camera_choice)
@@ -143,7 +144,7 @@ class MainWindow(QMainWindow):
         column.addWidget(self.follow_button)
         column.addWidget(button('Reset camera  H', lambda: self.view.preset('Inner system')))
         column.addSpacing(14)
-        column.addWidget(label('Scroll to zoom\nDrag to pan\nDouble click to follow', 'muted'))
+        column.addWidget(label('Scroll to zoom · Drag to orbit\nShift-drag or middle drag to pan\nDouble click to follow', 'muted'))
         return panel
 
     def _inspector_panel(self):
@@ -174,13 +175,20 @@ class MainWindow(QMainWindow):
         column.addWidget(label('DISPLAY', 'eyebrow'))
         self.toggles = {}
         for title, attribute in [('Body labels','labels'),('Orbit trails','trails'),
-                                  ('Background stars','stars'),('Lighting & rings','effects'),
+                                  ('Star skybox','stars'),('Lighting, clouds & rings','effects'),
                                   ('Physical planet radii','physical')]:
             check = QCheckBox(title)
             check.setChecked(getattr(self.view,attribute))
             check.toggled.connect(lambda value, attr=attribute: setattr(self.view,attr,value))
             self.toggles[attribute] = check
             column.addWidget(check)
+        column.addWidget(label('Sky brightness', 'muted'))
+        self.sky_slider = QSlider(Qt.Orientation.Horizontal)
+        self.sky_slider.setRange(0,100)
+        self.sky_slider.setValue(round(self.view.sky_brightness*100))
+        self.sky_slider.setAccessibleName('Sky brightness')
+        self.sky_slider.valueChanged.connect(lambda value: setattr(self.view, 'sky_brightness', value/100))
+        column.addWidget(self.sky_slider)
         column.addWidget(label('Trail history (maximum 1,500 samples)', 'muted'))
         self.trail_slider = QSlider(Qt.Orientation.Horizontal)
         self.trail_slider.setRange(50,1500)
@@ -191,7 +199,7 @@ class MainWindow(QMainWindow):
         column.addWidget(button('Save screenshot…', self._screenshot))
         column.addSpacing(12)
         column.addWidget(label('REFERENCE FRAME', 'eyebrow'))
-        column.addWidget(label('ICRF / ecliptic J2000\nSolar-system barycenter\n3D physics · 2D view · SI units', 'muted'))
+        column.addWidget(label('ICRF / ecliptic J2000\nSolar-system barycenter\n3D physics & view · SI units', 'muted'))
         column.addStretch()
         scroll.setWidget(inner)
         outer.addWidget(scroll)
@@ -287,6 +295,8 @@ class MainWindow(QMainWindow):
         action(simulation,'Quit','Ctrl+Q',self.close)
         view = self.menuBar().addMenu('View')
         action(view,'Home camera','H',lambda: self.view.preset('Inner system'))
+        action(view,'Top-down view','T',lambda: self.view.preset('Top-down view'))
+        action(view,'3D view','V',lambda: self.view.preset('3D view'))
         action(view,'Follow selection','F',self._toggle_follow)
         action(view,'Fullscreen','F11',self._fullscreen)
         item = action(view,'Show inspector','I',self._toggle_inspector,True)
@@ -300,6 +310,7 @@ class MainWindow(QMainWindow):
             value = self.settings.value(f'display/{name}', check.isChecked(), type=bool)
             check.setChecked(value)
         self.trail_slider.setValue(self.settings.value('display/trail_length',800,type=int))
+        self.sky_slider.setValue(self.settings.value('display/sky_brightness',45,type=int))
         geometry = self.settings.value('window/geometry')
         if geometry is not None:
             self.restoreGeometry(geometry)
@@ -504,7 +515,13 @@ class MainWindow(QMainWindow):
         try:
             metadata = {'source':self.scenario.source,'initial_epoch_tdb':self.scenario.epoch,
                         'simulation_seconds':self.view.snapshot.elapsed if self.view.snapshot else 0,
-                        'frame':self.scenario.frame,'exaggerated_radii':not self.view.physical}
+                        'frame':self.scenario.frame,'exaggerated_radii':not self.view.physical,
+                        'camera': {'target_m':self.view.camera.center.tolist(),
+                                   'eye_m':self.view.camera.eye.tolist(),
+                                   'span_m':self.view.camera.span,
+                                   'yaw_radians':self.view.camera.yaw,
+                                   'pitch_radians':self.view.camera.pitch,
+                                   'field_of_view_radians':self.view.camera.fov}}
             Path(path).with_suffix('.json').write_text(json.dumps(metadata,indent=2)+'\n')
         except OSError:
             self.statusBar().showMessage(f'Screenshot saved to {path}; metadata could not be written.')
@@ -513,22 +530,24 @@ class MainWindow(QMainWindow):
 
     def _help(self):
         QMessageBox.information(self,APP_NAME + ' · Controls & model',
-            'NAVIGATION\nScroll: zoom toward cursor · Drag: pan\nClick: inspect · Double click: focus and follow\n'
-            'H: home · F: follow · I: inspector · F11: fullscreen\n\n'
+            'NAVIGATION\nScroll: zoom · Drag: orbit\nShift-drag / middle or right drag: pan\n'
+            'Click: inspect · Double click: focus and follow\n'
+            'H: home · T: top-down · V: 3D view\nF: follow · I: inspector · F11: fullscreen\n\n'
             'SIMULATION\nSpace: play/pause · N: one step · R: restart\nCtrl+S: screenshot · F1: help\n\n'
             'SCIENCE\nNewtonian pairwise gravity and kick–drift–kick leapfrog. '
-            'Three-dimensional physics with a two-dimensional view; '
-            'no moons, collisions, relativity, or planet rotation. '
+            'Three-dimensional physics and perspective rendering; '
+            'no moons, collisions, relativity, or simulated planet rotation. '
             'The default timestep is one hour. Larger steps trade accuracy for speed.\n\n'
             'NASA initializes the state; subsequent motion is integrated locally. '
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
             'Trails show simulated history. Default radii are exaggerated.\n\n'
-            'IMAGE CREDITS\nPlanet and Sun maps: Solar System Scope / INOVE, '
-            'based on NASA imagery; unmodified 2K maps, CC BY 4.0. '
+            'IMAGE CREDITS\nPlanet, Sun, Earth cloud/night, Saturn ring and Milky Way sky maps: '
+            'Solar System Scope / INOVE. Unmodified source images, CC BY 4.0. '
             'https://www.solarsystemscope.com/textures/\n'
             'https://creativecommons.org/licenses/by/4.0/\n'
             'Maps include enhanced colors and filled unmapped regions. '
-            'Saturn rings remain decorative.\n\n'
+            'Body axes are illustrative fixed orientations. The sky is a visual backdrop, '
+            'not a calibrated star-chart overlay.\n\n'
             'High playback rates may be limited by available compute. The numerical timestep '
             'does not change automatically. Arbitrary reverse playback is not implemented.')
 
@@ -539,5 +558,6 @@ class MainWindow(QMainWindow):
         for name,check in self.toggles.items():
             self.settings.setValue(f'display/{name}',check.isChecked())
         self.settings.setValue('display/trail_length',self.trail_slider.value())
+        self.settings.setValue('display/sky_brightness',self.sky_slider.value())
         self.settings.setValue('window/geometry',self.saveGeometry())
         super().closeEvent(event)

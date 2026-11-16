@@ -8,3 +8,4 @@ build/
 dist/
 *.png
 !src/solar_system_simulator/assets/app-icon.png
+!src/solar_system_simulator/assets/textures/*.png

@@ -1,22 +1,24 @@
 #version 330
 in vec2 uv;
 out vec4 frag;
-uniform vec2 viewport;
+uniform sampler2D sky_map;
+uniform vec3 camera_right;
+uniform vec3 camera_up;
+uniform vec3 camera_back;
+uniform vec2 field_of_view;
 uniform bool stars;
-uniform vec3 background_outer;
-uniform vec3 background_inner;
-uniform vec3 star_color;
-float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+uniform float brightness;
+uniform vec3 background_color;
+const float PI = 3.141592653589793;
 void main() {
-    vec2 p=(uv*.5+.5)*viewport;
-    float vignette=1.-clamp(length(uv)*.48,0.,1.);
-    vec3 c=mix(background_outer,background_inner,vignette);
-    if(stars) {
-        vec2 cell=floor(p/39.);
-        vec2 star=(cell+vec2(hash(cell),hash(cell+31.)))*39.;
-        float d=length(p-star);
-        float bright=pow(hash(cell+91.),5.);
-        c+=star_color*exp(-d*d*1.8)*bright*.8;
+    vec3 color = background_color;
+    if (stars) {
+        vec3 direction = normalize(camera_right*uv.x*field_of_view.x + camera_up*uv.y*field_of_view.y - camera_back);
+        // Fixed presentation orientation; the sky remains anchored to world directions.
+        direction = mat3(0., -1., 0., .507538, 0., .861629, -.861629, 0., .507538) * direction;
+        direction = mat3(1., 0., 0., 0., .866025, .5, 0., -.5, .866025) * direction;
+        vec2 coord = vec2(.5 - atan(direction.y, direction.x)/(2.*PI), .5 - asin(clamp(direction.z, -1., 1.))/PI);
+        color += texture(sky_map, coord).rgb * brightness;
     }
-    frag=vec4(c,1.);
+    frag = vec4(color, 1.);
 }

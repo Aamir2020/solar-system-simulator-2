@@ -61,5 +61,33 @@
     "sha256": "cb42ea82709741d28b0af44d8b283cbc6dbd0c521a7f0e1e1e010ade00977df6",
     "width": 2048,
     "height": 1024
+  },
+  "Sky": {
+    "file": "8k_stars_milky_way.jpg",
+    "url": "https://www.solarsystemscope.com/textures/download/8k_stars_milky_way.jpg",
+    "sha256": "1fd005ddd6d53364cc5106e0121b83fd3bca236b1503f6b51f5501d9d51eafaf",
+    "width": 8192,
+    "height": 4096
+  },
+  "Earth night": {
+    "file": "2k_earth_nightmap.jpg",
+    "url": "https://www.solarsystemscope.com/textures/download/2k_earth_nightmap.jpg",
+    "sha256": "c16fd1bc096ab91a5c5265c6ff9847c43f489f2e2ee790ccdbcbd03251cf3a5a",
+    "width": 2048,
+    "height": 1024
+  },
+  "Earth clouds": {
+    "file": "2k_earth_clouds.jpg",
+    "url": "https://www.solarsystemscope.com/textures/download/2k_earth_clouds.jpg",
+    "sha256": "fffd7f68d41b37274822150e54a6ef605af1d3ec35624d9f628c3b896bfa42ed",
+    "width": 2048,
+    "height": 1024
+  },
+  "Saturn rings": {
+    "file": "2k_saturn_ring_alpha.png",
+    "url": "https://www.solarsystemscope.com/textures/download/2k_saturn_ring_alpha.png",
+    "sha256": "4b0644b2f3ef259fd0bfaedd9dc52f9e7d9738f65f50363e8c4dd19f650d7334",
+    "width": 2048,
+    "height": 125
   }
 }

@@ -1,4 +1,3 @@
-from importlib.resources import files
 from time import monotonic
 import math
 
@@ -10,18 +9,12 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from ..data.catalog import AU, BODIES
 from ..theme import COLORS
-from .camera import Camera, display_radii, pick_body
+from .camera import Camera, pick_body
 from .labels import visible_labels
 from .overlay import TextOverlay
-from .textures import load_body_textures
+from .renderer import SceneRenderer
+from .scene import body_layout, pick_sphere, trail_history
 
-
-def shader(name):
-    return files("solar_system_simulator").joinpath(f"rendering/{name}.glsl").read_text()
-
-
-def rgb(color):
-    return tuple(int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
 
 
 class Viewport(QOpenGLWidget):
@@ -53,46 +46,29 @@ class Viewport(QOpenGLWidget):
         self.error = None
         self.drag_start = self.last_drag = None
         self.dragged = False
-        self.resources = []
+        self.renderer = None
+        self.sky_brightness = .45
+        self.drag_mode = None
         self._visible_labels = set()
         self.text_overlay = TextOverlay(self)
         self.text_overlay.setGeometry(self.rect())
         self.setAccessibleName("Solar system viewport")
-        self.setAccessibleDescription("Scroll to zoom; drag to pan; click a body to inspect; double click to follow.")
+        self.setAccessibleDescription("Scroll to zoom; drag to orbit; middle drag or Shift-drag to pan; double click to follow.")
 
     def initializeGL(self):
         try:
             self.ctx = moderngl.create_context(require=330)
-            quad = np.array([[-1,-1], [1,-1], [-1,1], [-1,1], [1,-1], [1,1]], dtype='f4')
-            self.quad_buffer = self.ctx.buffer(quad.tobytes())
-            self.body_program = self.ctx.program(vertex_shader=shader('quad'),
-                                                 fragment_shader=shader('body'))
-            self.background_program = self.ctx.program(vertex_shader=shader('quad'),
-                                                       fragment_shader=shader('background'))
-            self.body_vao = self.ctx.simple_vertex_array(self.body_program, self.quad_buffer, 'in_pos')
-            self.body_textures = load_body_textures(self.ctx)
-            self.body_program['surface_map'].value = 0
-            self.background_vao = self.ctx.simple_vertex_array(
-                self.background_program, self.quad_buffer, 'in_pos')
-            self.trail_program = self.ctx.program(vertex_shader=shader('trail_vertex'),
-                                                  fragment_shader=shader('trail_fragment'))
-            # Six vertices per segment, four floats per vertex, max 1500 history samples.
-            self.trail_buffer = self.ctx.buffer(reserve=1500 * 6 * 4 * 4, dynamic=True)
-            self.trail_vao = self.ctx.vertex_array(self.trail_program,
-                [(self.trail_buffer, '2f 1f 1f', 'in_pos', 'in_side', 'in_age')])
-            self.resources = [self.body_vao, self.background_vao, self.trail_vao,
-                              self.quad_buffer, self.trail_buffer, self.body_program,
-                              self.background_program, self.trail_program, *self.body_textures]
             self.context().aboutToBeDestroyed.connect(self.cleanup)
+            self.renderer = SceneRenderer(self.ctx)
         except Exception as exc:
             self.error = f"OpenGL 3.3 initialization failed: {exc}"
             self.graphics_error.emit(self.error)
 
     def cleanup(self):
         self.makeCurrent()
-        for resource in self.resources:
-            resource.release()
-        self.resources.clear()
+        if self.renderer:
+            self.renderer.release()
+            self.renderer = None
         if self.ctx:
             self.ctx.release()
             self.ctx = None
@@ -112,10 +88,14 @@ class Viewport(QOpenGLWidget):
         self.selection = index
         if index is None:
             self.set_follow(False)
+        elif self.follow:
+            self.set_follow(True)
         self.update()
 
     def set_follow(self, enabled):
         self.follow = bool(enabled and self.selection is not None)
+        radius = BODIES[self.selection].radius if self.follow else 0.
+        self.camera.minimum_span = max(.00005*AU, 2.6*radius*math.tan(self.camera.fov/2))
         self.followed.emit(self.follow)
 
     def focus_body(self, index):
@@ -123,18 +103,24 @@ class Viewport(QOpenGLWidget):
             return
         self.set_selection(index)
         self.selected.emit(index)
-        # Preserve a useful amount of nearby space while inspecting a planet.
-        span = max(BODIES[index].radius * 18, .015 * AU) if index else .2 * AU
-        self.camera.preset(self.positions[index], span)
         self.set_follow(True)
+        self.camera.preset(self.positions[index], max(BODIES[index].radius*4, .0001*AU))
 
     def preset(self, name):
+        if name in ('Top-down view', '3D view'):
+            if name == 'Top-down view':
+                self.camera.top_down()
+            else:
+                self.camera.perspective()
+            self.update()
+            return
         self.set_follow(False)
         if name == 'Selected' and self.selection is not None:
             self.focus_body(self.selection)
         else:
             span = {'Inner system': 5, 'Outer system': 72, 'Whole system': 78}[name]
-            center = self.positions[0] if self.positions is not None else [0, 0]
+            center = self.positions[0] if self.positions is not None else [0, 0, 0]
+            self.camera.perspective()
             self.camera.preset(center, span * AU)
 
     def _interpolate(self, now):
@@ -157,6 +143,8 @@ class Viewport(QOpenGLWidget):
         target = self.positions[self.selection] if (
             self.follow and self.selection is not None and self.positions is not None) else None
         self.camera.animate(dt, target)
+        if self.positions is not None:
+            self.camera.keep_outside(self.positions, np.array([body.radius for body in BODIES]))
         self.frames += 1
         if now - self.fps_time >= .5:
             self.fps = self.frames / (now - self.fps_time)
@@ -194,77 +182,18 @@ class Viewport(QOpenGLWidget):
     def _draw_gpu(self):
         w, h = self.width(), self.height()
         dpr = self.devicePixelRatioF()
-        # QOpenGLWidget renders into a Qt-owned framebuffer, not the window's FBO 0.
         fbo = self.ctx.detect_framebuffer(self.defaultFramebufferObject())
         fbo.use()
         self.ctx.viewport = (0, 0, round(w*dpr), round(h*dpr))
-        self.ctx.disable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
-        self.ctx.enable(moderngl.BLEND)
-        self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-        bg = self.background_program
-        bg['viewport'].value = (w, h)
-        bg['center'].value = (w/2, h/2)
-        bg['extent'].value = max(w,h)/2
-        bg['stars'].value = self.stars
-        bg['background_outer'].value = rgb(COLORS['space'])
-        bg['background_inner'].value = rgb(COLORS['space_center'])
-        bg['star_color'].value = rgb(COLORS['stars'])
-        self.background_vao.render()
-        if self.positions is None:
-            return
-        points = self.camera.to_screen(self.positions, w, h)
-        radii = display_radii(BODIES, self.camera.span, h, self.physical)
-        if self.trails and self.snapshot is not None:
-            self._draw_trails(w, h)
-        program = self.body_program
-        program['viewport'].value = (w,h)
-        program['effects'].value = self.effects
-        for i, (point, radius, body) in enumerate(zip(points, radii, BODIES)):
-            extent = radius * 2.25
-            if radius < .08 or not (-extent < point[0] < w+extent and -extent < point[1] < h+extent):
-                continue
-            light = points[0] - point
-            length = np.linalg.norm(light)
-            if length:
-                light = light / length
-            else:
-                light = np.array([-.6, -.8])
-            program['center'].value = tuple(point)
-            program['extent'].value = float(extent)
-            program['color'].value = rgb(body.color)
-            program['kind'].value = i
-            program['light_dir'].value = (float(light[0]), -float(light[1]))
-            self.body_textures[i].use(location=0)
-            self.body_vao.render()
+        history = None
+        if self.trails and self.snapshot is not None and self.positions is not None:
+            history = trail_history(self.snapshot, self.render_elapsed, self.positions, self.trail_length)
+        self.renderer.draw(self.camera, self.positions, w, h, physical=self.physical,
+                           effects=self.effects, stars=self.stars,
+                           sky_brightness=self.sky_brightness, history=history)
 
-    def _draw_trails(self, w, h):
-        # The newest physics samples can be ahead of the interpolated planets.
-        # Clip by simulation time before limiting history, then end at the same
-        # position used to draw each planet and center the following camera.
-        end = np.searchsorted(self.snapshot.trail_times, self.render_elapsed, side='left')
-        start = max(0, end - (self.trail_length - 1))
-        history = np.concatenate((self.snapshot.trails[start:end], self.positions[None]))
-        if len(history) < 2:
-            return
-        self.trail_program['viewport'].value = (w, h)
-        order = np.array([0,1,2,2,1,3])
-        age = np.linspace(.03, 1, len(history))
-        for i, body in enumerate(BODIES):
-            points = self.camera.to_screen(history[:, i], w, h)
-            a, b = points[:-1], points[1:]
-            direction = b-a
-            lengths = np.linalg.norm(direction, axis=1)
-            normal = np.column_stack((-direction[:,1], direction[:,0]))
-            normal /= np.maximum(lengths[:,None], 1e-8)
-            normal *= 1.6
-            corners = np.stack((a-normal,a+normal,b-normal,b+normal),axis=1)
-            vertices = np.empty((len(a),6,4),dtype='f4')
-            vertices[:,:,:2] = corners[:,order,:]
-            vertices[:,:,2] = np.array([-1,1,-1,-1,1,1])
-            vertices[:,:,3] = np.stack((age[:-1],age[:-1],age[1:],age[1:],age[:-1],age[1:]),axis=1)
-            self.trail_buffer.write(vertices.tobytes())
-            self.trail_program['color'].value = rgb(body.color)
-            self.trail_vao.render(vertices=len(a)*6)
+    def _layout(self):
+        return body_layout(self.camera, self.positions, self.width(), self.height(), self.physical)
 
     def _draw_overlay(self, painter):
         w, h = self.width(), self.height()
@@ -272,13 +201,14 @@ class Viewport(QOpenGLWidget):
         painter.setFont(QFont('Sans Serif', 9))
         self._visible_labels = set()
         if self.positions is not None:
-            points = self.camera.to_screen(self.positions, w, h)
-            radii = display_radii(BODIES, self.camera.span, h, self.physical)
+            layout = self._layout()
+            points, radii = layout.points, layout.screen_radii
             candidates = {}
             order = sorted(range(len(BODIES)), key=lambda i: i != self.selection)
             for i in order:
                 p = points[i]
-                if not (0 < p[0] < w and 0 < p[1] < h):
+                # Keep the selected marker identifiable when enlarged bodies overlap.
+                if (not layout.visible[i] and i != self.selection) or not (0 < p[0] < w and 0 < p[1] < h):
                     continue
                 if i in (self.selection, self.hover):
                     painter.setPen(QPen(QColor(COLORS['accent'] if i==self.selection
@@ -305,7 +235,8 @@ class Viewport(QOpenGLWidget):
         painter.drawText(22, 30, 'SOLAR SYSTEM SIMULATOR')
         if self.snapshot is not None and not self.paused:
             painter.drawText(22, 50, f'Achieved {self.snapshot.achieved_rate / 86400:,.1f} simulated days / second')
-        mode = 'Physical radii' if self.physical else 'Exaggerated radii · distances to scale'
+        mode = 'Physical radii' if self.physical else 'Enlarged planet radii'
+        mode = ('Top-down view' if abs(self.camera.pitch-math.pi/2) < 1e-6 else '3D view') + ' · ' + mode
         painter.drawText(22, h-22, mode)
         # A useful physical scale independent of viewport aspect ratio.
         desired = self.camera.span / h * 110 / AU
@@ -314,14 +245,16 @@ class Viewport(QOpenGLWidget):
         pixels = scale_au * AU / self.camera.span * h
         painter.drawLine(QPointF(w-25-pixels,h-30), QPointF(w-25,h-30))
         painter.drawText(QRectF(w-185,h-55,160,20), Qt.AlignmentFlag.AlignRight,
-                         f'{scale_au:g} AU  ·  {self.fps:.0f} FPS')
+                         f'{scale_au:g} AU at focus · {self.fps:.0f} FPS')
 
     def _pick(self, point):
         if self.positions is None:
             return None
-        points = self.camera.to_screen(self.positions, self.width(), self.height())
-        radii = display_radii(BODIES, self.camera.span, self.height(), self.physical)
-        return pick_body(points, radii, point)
+        layout = self._layout()
+        hit = pick_sphere(self.camera, self.positions, layout.world_radii, point, self.width(), self.height())
+        if hit is not None:
+            return hit
+        return pick_body(layout.points, layout.screen_radii, point, layout.depths, layout.visible)
 
     def wheelEvent(self, event):
         pixels = event.pixelDelta().y()
@@ -335,31 +268,40 @@ class Viewport(QOpenGLWidget):
         self.update()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton):
             self.drag_start = self.last_drag = event.position()
             self.dragged = False
+            self.drag_mode = 'pan' if (event.button() != Qt.MouseButton.LeftButton or
+                event.modifiers() & Qt.KeyboardModifier.ShiftModifier) else 'orbit'
+            event.accept()
 
     def mouseMoveEvent(self, event):
         p = event.position()
-        if self.drag_start is not None and event.buttons() & Qt.MouseButton.LeftButton:
+        if self.drag_start is not None and event.buttons():
             if (p-self.drag_start).manhattanLength() > 4:
                 self.dragged = True
             if self.dragged:
-                self.set_follow(False)
                 delta = p - self.last_drag
-                self.camera.pan(delta.x(),delta.y(),self.height())
+                if self.drag_mode == 'pan':
+                    self.set_follow(False)
+                    self.camera.pan(delta.x(), delta.y(), self.height())
+                else:
+                    self.camera.orbit(delta.x(), delta.y())
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
             self.last_drag = p
         else:
-            self.hover = self._pick((p.x(),p.y()))
+            self.hover = self._pick((p.x(), p.y()))
             self.setCursor(Qt.CursorShape.PointingHandCursor if self.hover is not None
                            else Qt.CursorShape.OpenHandCursor)
         self.update()
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and not self.dragged:
-            self.set_selection(self._pick((event.position().x(),event.position().y())))
+        if event.button() == Qt.MouseButton.LeftButton and not self.dragged and self.drag_mode == 'orbit':
+            self.set_selection(self._pick((event.position().x(), event.position().y())))
             self.selected.emit(self.selection)
-        self.drag_start = self.last_drag = None
+        self.drag_start = self.last_drag = self.drag_mode = None
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.update()
 
     def mouseDoubleClickEvent(self, event):
         index = self._pick((event.position().x(),event.position().y()))

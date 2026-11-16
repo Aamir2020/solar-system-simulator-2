@@ -32,7 +32,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 solar_system_simulator = [
     "assets/*.png", "assets/*.ico", "assets/*.icns", "assets/*.json", "assets/*.svg", "assets/*.md", "assets/textures/*.jpg", "assets/textures/*.json",
-    "assets/textures/*.md", "rendering/*.glsl",
+    "assets/textures/*.md", "assets/textures/*.png", "rendering/*.glsl",
 ]
 
 [tool.ruff]

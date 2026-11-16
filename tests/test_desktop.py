@@ -168,13 +168,38 @@ class DesktopTests(unittest.TestCase):
                                               window.view.width(), window.view.height())
                     np.testing.assert_allclose(screen,
                         [window.view.width()/2, window.view.height()/2], atol=1e-8)
+                # Orbiting keeps a moving target selected; panning releases following.
+                def drag(button, modifiers=Qt.KeyboardModifier.NoModifier):
+                    start, end = QPointF(200, 180), QPointF(280, 220)
+                    for kind, point, buttons in (
+                        (QEvent.Type.MouseButtonPress, start, button),
+                        (QEvent.Type.MouseMove, end, button),
+                        (QEvent.Type.MouseButtonRelease, end, Qt.MouseButton.NoButton),
+                    ):
+                        event = QMouseEvent(kind, point, point, button, buttons, modifiers)
+                        app.sendEvent(window.view, event)
+                yaw = window.view.camera.yaw
+                drag(Qt.MouseButton.LeftButton)
+                self.assertNotEqual(window.view.camera.yaw, yaw)
+                self.assertTrue(window.view.follow)
+                QTest.qWait(30)
+                np.testing.assert_array_equal(window.view.camera.center, window.view.positions[3])
+                drag(Qt.MouseButton.MiddleButton)
+                self.assertFalse(window.view.follow)
+                window.view.preset('Top-down view')
+                self.assertAlmostEqual(window.view.camera.pitch, np.pi/2)
+                window.view.preset('3D view')
+                self.assertLess(window.view.camera.pitch, np.pi/2)
+                window.sky_slider.setValue(70)
+                self.assertEqual(window.view.sky_brightness, .7)
+                self.assertIsNone(window.view.error)
                 window.view.set_follow(False)
                 window.body_list.setCurrentRow(4)
                 self.assertEqual(window.view.selection, 4)
                 self.assertTrue(window.view.follow)
                 QTest.qWait(50)
                 import numpy as np
-                np.testing.assert_array_equal(window.view.camera.target_center, window.view.positions[4, :2])
+                np.testing.assert_array_equal(window.view.camera.target_center, window.view.positions[4])
                 # Viewport clicks also retarget following, and empty-space clicks release it.
                 window.view.set_follow(False)
                 window.view.set_selection(2)
