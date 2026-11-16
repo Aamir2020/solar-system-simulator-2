@@ -37,6 +37,7 @@ class Viewport(QOpenGLWidget):
         self.camera = Camera()
         self.snapshot = self.previous = None
         self.positions = None
+        self.render_elapsed = 0.
         self.selection = 0
         self.follow = False
         self.hover = None
@@ -105,6 +106,7 @@ class Viewport(QOpenGLWidget):
         self.snapshot = snapshot
         if self.positions is None or self.previous is None:
             self.positions = snapshot.positions.copy()
+            self.render_elapsed = snapshot.elapsed
 
     def set_selection(self, index):
         self.selection = index
@@ -140,10 +142,12 @@ class Viewport(QOpenGLWidget):
             return
         if self.paused or self.previous is None:
             self.positions = self.snapshot.positions
+            self.render_elapsed = self.snapshot.elapsed
             return
         interval = self.snapshot.published - self.previous.published
         alpha = np.clip((now - self.snapshot.published) / max(interval, .016), 0, 1)
         self.positions = self.previous.positions * (1-alpha) + self.snapshot.positions * alpha
+        self.render_elapsed = self.previous.elapsed * (1-alpha) + self.snapshot.elapsed * alpha
 
     def paintGL(self):
         now = monotonic()
@@ -234,7 +238,12 @@ class Viewport(QOpenGLWidget):
             self.body_vao.render()
 
     def _draw_trails(self, w, h):
-        history = self.snapshot.trails[-self.trail_length:]
+        # The newest physics samples can be ahead of the interpolated planets.
+        # Clip by simulation time before limiting history, then end at the same
+        # position used to draw each planet and center the following camera.
+        end = np.searchsorted(self.snapshot.trail_times, self.render_elapsed, side='left')
+        start = max(0, end - (self.trail_length - 1))
+        history = np.concatenate((self.snapshot.trails[start:end], self.positions[None]))
         if len(history) < 2:
             return
         self.trail_program['viewport'].value = (w, h)

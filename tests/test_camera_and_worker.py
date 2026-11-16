@@ -108,13 +108,18 @@ class WorkerTests(unittest.TestCase):
         try:
             initial=runner.latest()
             with self.assertRaises(ValueError):initial.positions[0,0]=1
+            with self.assertRaises(ValueError):initial.trail_times[0]=1
+            np.testing.assert_array_equal(initial.trail_times, [0])
             runner.single_step()
             advanced=self.wait_for(runner,lambda s:s.elapsed==86400)
             self.assertEqual(advanced.generation,0)
+            np.testing.assert_array_equal(advanced.trail_times, [0, 86400])
+            np.testing.assert_array_equal(advanced.trails[-1], advanced.positions)
             generation=runner.reset(state)
             reset=self.wait_for(runner,lambda s:s.generation==generation)
             self.assertEqual(reset.elapsed,0)
             self.assertEqual(len(reset.trails),1)
+            np.testing.assert_array_equal(reset.trail_times, [0])
             np.testing.assert_array_equal(reset.positions,state.positions)
         finally:runner.close()
         self.assertFalse(runner.thread.is_alive())
@@ -127,6 +132,9 @@ class WorkerTests(unittest.TestCase):
             snap=self.wait_for(runner,lambda s:s.elapsed>=10*86400)
             runner.configure(paused=True)
             self.assertLessEqual(len(snap.trails),3)
+            self.assertEqual(len(snap.trails), len(snap.trail_times))
+            self.assertTrue(np.all(np.diff(snap.trail_times) > 0))
+            self.assertEqual(snap.trail_times[-1], snap.elapsed)
             self.assertLessEqual(runner.output.qsize(),2)
             self.assertTrue(runner.errors.empty())
         finally:runner.close()

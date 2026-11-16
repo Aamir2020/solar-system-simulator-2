@@ -15,6 +15,7 @@ class Snapshot:
     positions: np.ndarray
     velocities: np.ndarray
     trails: np.ndarray
+    trail_times: np.ndarray
     published: float
     achieved_rate: float
 
@@ -50,6 +51,7 @@ class SimulationRunner:
         self.single_steps = 0
         self.budget = StepBudget()
         self.history = deque([] if state is None else [state.positions.copy()], maxlen=trail_limit)
+        self.history_times = deque([] if state is None else [state.elapsed], maxlen=trail_limit)
         self.last_sample = state.elapsed if state is not None else 0.
         self.output = Queue(maxsize=2)
         self.errors = Queue()
@@ -89,6 +91,8 @@ class SimulationRunner:
             self.single_steps = 0
             self.history.clear()
             self.history.append(self.state.positions.copy())
+            self.history_times.clear()
+            self.history_times.append(self.state.elapsed)
             self.last_sample = state.elapsed
             self._publish(0)
             self.condition.notify()
@@ -111,7 +115,7 @@ class SimulationRunner:
     def _publish(self, achieved_rate):
         snap = Snapshot(self.generation, self.state.elapsed, readonly(self.state.positions),
                         readonly(self.state.velocities), readonly(self.history),
-                        monotonic(), achieved_rate)
+                        readonly(self.history_times), monotonic(), achieved_rate)
         if self.output.full():
             try:
                 self.output.get_nowait()
@@ -140,6 +144,7 @@ class SimulationRunner:
                         step(self.state, self.dt)
                         if self.state.elapsed - self.last_sample >= 86400:
                             self.history.append(self.state.positions.copy())
+                            self.history_times.append(self.state.elapsed)
                             self.last_sample = self.state.elapsed
                     achieved = count * self.dt / max(wall, monotonic() - started, 1e-6)
                     self._publish(achieved)
