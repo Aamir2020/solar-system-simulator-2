@@ -5,7 +5,7 @@ from queue import Empty, Queue
 from threading import Condition, Thread
 from time import monotonic
 import numpy as np
-from .system import State, step
+from .system import DEFAULT_DT, State, step
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ class StepBudget:
 
 
 class SimulationRunner:
-    def __init__(self, state: State | None = None, dt=86400.0, trail_limit=1500):
+    def __init__(self, state: State | None = None, dt=DEFAULT_DT, trail_limit=1500):
         self.condition = Condition()
         self.state = state.copy() if state is not None else None
         self.dt = dt

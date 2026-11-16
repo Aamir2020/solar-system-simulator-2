@@ -4,6 +4,7 @@ import numpy as np
 from solar_system_simulator.data.catalog import AU, BODIES
 from support import sample_scenario
 from solar_system_simulator.physics.runner import SimulationRunner
+from solar_system_simulator.physics.system import DEFAULT_DT
 from solar_system_simulator.rendering.camera import Camera,display_radii,pick_body
 
 
@@ -77,6 +78,18 @@ class CameraTests(unittest.TestCase):
         self.assertTrue(np.all(exaggerated>=physical))
         np.testing.assert_array_equal(state.positions,initial)
 
+    def test_camera_projects_and_follows_3d_without_modifying_the_state(self):
+        positions = np.array([[AU, -AU, .5*AU], [AU, -AU, -AU]])
+        original = positions.copy()
+        camera = Camera()
+        camera.preset(positions[0], .2*AU)
+        camera.animate(1/60, follow=positions[0])
+        np.testing.assert_array_equal(camera.center, positions[0, :2])
+        np.testing.assert_array_equal(camera.target_center, positions[0, :2])
+        np.testing.assert_array_equal(camera.to_screen(positions, 1200, 800),
+                                      [[600, 400], [600, 400]])
+        np.testing.assert_array_equal(positions, original)
+
 
 class WorkerTests(unittest.TestCase):
     def test_empty_runner_cannot_advance_until_data_is_loaded(self):
@@ -91,7 +104,7 @@ class WorkerTests(unittest.TestCase):
             runner.reset(sample_scenario().state)
             self.assertIsNotNone(runner.latest())
             runner.single_step()
-            self.wait_for(runner, lambda snapshot: snapshot.elapsed == 86400)
+            self.wait_for(runner, lambda snapshot: snapshot.elapsed == DEFAULT_DT)
         finally:
             runner.close()
     def wait_for(self,runner,predicate):
@@ -104,7 +117,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_step_reset_generation_and_readonly_snapshots(self):
         state=sample_scenario().state
-        runner=SimulationRunner(state)
+        runner=SimulationRunner(state, dt=86400)
         try:
             initial=runner.latest()
             with self.assertRaises(ValueError):initial.positions[0,0]=1
@@ -125,7 +138,7 @@ class WorkerTests(unittest.TestCase):
         self.assertFalse(runner.thread.is_alive())
 
     def test_bounded_history_and_pause(self):
-        runner=SimulationRunner(sample_scenario().state,trail_limit=3)
+        runner=SimulationRunner(sample_scenario().state,dt=86400,trail_limit=3)
         try:
             runner.latest()
             runner.configure(paused=False,rate=10000*86400)

@@ -33,10 +33,10 @@ class Session:
 
 
 class DataTests(unittest.TestCase):
-    def test_vector_units_and_projection(self):
+    def test_vector_units_and_all_three_components(self):
         position,velocity=parse_vectors(payload(),2461041.5)
-        np.testing.assert_array_equal(position,[1e11,-2e10])
-        np.testing.assert_array_equal(velocity,[30000,-4000])
+        np.testing.assert_array_equal(position,[1e11,-2e10,9e6])
+        np.testing.assert_array_equal(velocity,[30000,-4000,500])
 
     def test_errors_and_malformed_data(self):
         cases=[None,{}, {'error':'no such body'}, {'signature':{'version':'1.3'},'result':'No data'}]
@@ -59,7 +59,10 @@ class DataTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             session=Session()
             client=HorizonsClient(directory,session)
-            client.load('2026-01-01')
+            scenario = client.load('2026-01-01')
+            self.assertEqual(scenario.state.positions.shape, (9, 3))
+            np.testing.assert_array_equal(scenario.state.positions[:, 2], 9e6)
+            np.testing.assert_array_equal(scenario.state.velocities[:, 2], 500)
             self.assertEqual(len(session.calls),9)
             self.assertEqual(len({r['TLIST'] for r in session.calls}),1)
             self.assertEqual({r['COMMAND'] for r in session.calls},{str(b.horizons_id) for b in BODIES})

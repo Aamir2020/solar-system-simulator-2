@@ -6,6 +6,8 @@ import sys
 from time import perf_counter
 
 from . import APP_NAME
+from .data.catalog import DAY
+from .physics.system import DEFAULT_DT
 
 
 def main(argv=None):
@@ -14,8 +16,10 @@ def main(argv=None):
     parser.add_argument('--epoch', help='Initial TDB calendar date for headless NASA loading')
     parser.add_argument('--cache-dir', help='Directory for cached NASA responses')
     parser.add_argument('--check-assets', action='store_true', help='Verify bundled graphics without a display or network')
-    parser.add_argument('--steps', type=int, default=365, help='Headless integration step count')
-    parser.add_argument('--dt', type=float, default=86400, help='Headless numerical timestep in seconds')
+    parser.add_argument('--steps', type=int, default=int(365 * DAY / DEFAULT_DT),
+                        help='Headless integration step count (default: %(default)s)')
+    parser.add_argument('--dt', type=float, default=DEFAULT_DT,
+                        help='Headless numerical timestep in seconds (default: %(default)s)')
     args = parser.parse_args(argv)
     if args.steps < 0 or not math.isfinite(args.dt) or args.dt <= 0:
         parser.error('Steps must be nonnegative and dt must be positive.')

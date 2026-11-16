@@ -17,7 +17,9 @@ class DesktopTests(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         from solar_system_simulator.ui.window import MainWindow
         from solar_system_simulator.theme import COLORS
-        from support import sample_scenario
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.physics.system import DEFAULT_DT
+        from scripts.benchmark_physics import load_scenario
         from solar_system_simulator.data.horizons import HorizonsError
         def wait_until(predicate):
             deadline = monotonic() + 5
@@ -45,6 +47,8 @@ class DesktopTests(unittest.TestCase):
                 self.assertIsNone(window.scenario)
                 self.assertIsNone(window.view.snapshot)
                 self.assertFalse(window.play_button.isEnabled())
+                self.assertEqual(window.timestep.currentData(), DEFAULT_DT)
+                self.assertEqual(window.runner.dt, DEFAULT_DT)
                 window._toggle_play()
                 window._step()
                 window._restart()
@@ -60,11 +64,16 @@ class DesktopTests(unittest.TestCase):
                 self.assertIsNone(window.runner.state)
                 self.assertFalse(window.play_button.isEnabled())
                 # The real loader path receives a fixture only inside this network-free test.
-                scenario = sample_scenario()
+                scenario = load_scenario()
                 with patch('solar_system_simulator.ui.window.HorizonsClient.load', return_value=scenario):
                     window.load_button.click()
                     wait_until(lambda: window.scenario is scenario)
                 wait_until(lambda: window.view.snapshot is not None)
+                self.assertEqual(window.view.snapshot.positions.shape, (9, 3))
+                self.assertGreater(abs(window.view.snapshot.positions[1, 2]), 1e6)
+                window._update_inspector()
+                self.assertEqual(window.metrics['Z · barycentric'].text(),
+                                 f'{scenario.state.positions[0, 2]/AU:+,.6f} AU')
                 self.assertTrue(window.play_button.isEnabled())
                 with patch('solar_system_simulator.ui.window.HorizonsClient.load',
                            side_effect=HorizonsError('Test reload failure')), \
@@ -114,7 +123,6 @@ class DesktopTests(unittest.TestCase):
                 QTest.qWait(50)
                 self.assertIsNone(window.view.error)
                 # At system scale, crowded inner names hide together, except the priority.
-                from solar_system_simulator.data.catalog import AU
                 window.view.camera.span = window.view.camera.target_span = 2000*AU
                 window.view.set_selection(None)
                 wait_until(lambda: window.view._visible_labels == {0})
@@ -127,8 +135,8 @@ class DesktopTests(unittest.TestCase):
                 self.assertTrue(window.view.follow)
                 self.assertEqual(window.view.snapshot.elapsed,0)
                 window._step()
-                wait_until(lambda: window.view.snapshot.elapsed == 86400)
-                self.assertEqual(window.view.snapshot.elapsed,86400)
+                wait_until(lambda: window.view.snapshot.elapsed == DEFAULT_DT)
+                self.assertEqual(window.view.snapshot.elapsed,DEFAULT_DT)
                 window._restart()
                 wait_until(lambda: window.view.snapshot.elapsed == 0)
                 self.assertEqual(window.view.snapshot.elapsed,0)
@@ -166,7 +174,7 @@ class DesktopTests(unittest.TestCase):
                 self.assertTrue(window.view.follow)
                 QTest.qWait(50)
                 import numpy as np
-                np.testing.assert_array_equal(window.view.camera.target_center, window.view.positions[4])
+                np.testing.assert_array_equal(window.view.camera.target_center, window.view.positions[4, :2])
                 # Viewport clicks also retarget following, and empty-space clicks release it.
                 window.view.set_follow(False)
                 window.view.set_selection(2)

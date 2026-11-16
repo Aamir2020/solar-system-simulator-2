@@ -8,7 +8,7 @@ class Scenario:
     state: State
     epoch: str
     source: str
-    frame: str = "ICRF / ecliptic J2000 · solar-system barycenter · 2D projection"
+    frame: str = "ICRF / ecliptic J2000 · solar-system barycenter · 3D physics / 2D view"
 
     def date_at(self, seconds):
         epoch = datetime.fromisoformat(self.epoch)

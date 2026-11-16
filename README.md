@@ -39,7 +39,9 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead.
 - Press **Space** to pause, **H** to reset the camera, and **F1** for help.
 - Press **Ctrl+S** to save a screenshot.
 
-Planet sizes are enlarged by default. The simulation is 2D and does not include moons, collisions, or relativity. NASA provides the starting positions and velocities; Python calculates the motion after that.
+Planet sizes are enlarged by default. Physics runs in 3D; the window shows a 2D view. NASA provides the starting positions and velocities; Python calculates the motion after that. Moons, collisions, and relativity are not included.
+
+The default physics step is **1 hour**. Larger steps allow faster playback with more orbital error.
 
 ## Tests
 
@@ -47,6 +49,8 @@ Planet sizes are enlarged by default. The simulation is 2D and does not include 
 python -m pip install -e '.[dev]'
 python -m unittest discover -s tests -v
 ```
+
+See [physics accuracy](docs/physics-accuracy.md) for the timestep comparison and benchmark command.
 
 ## Credits
 

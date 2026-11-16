@@ -14,8 +14,8 @@ DAY = 86400.
 
 
 def positions_at(days):
-    origins = np.column_stack((np.arange(len(BODIES)) * AU, np.zeros(len(BODIES))))
-    return origins + np.array([.0005 * AU, .00025 * AU]) * days
+    origins = np.column_stack((np.arange(len(BODIES)) * AU, np.zeros((len(BODIES), 2))))
+    return origins + np.array([.0005 * AU, .00025 * AU, .0001 * AU]) * days
 
 
 def snapshot(days, history_days, published):
@@ -41,7 +41,7 @@ class TrailTests(unittest.TestCase):
 
     def check_geometry(self, view, now):
         Viewport._interpolate(view, now)
-        view.camera.center = view.positions[3].copy()
+        view.camera.animate(1/60, follow=view.positions[3])
         Viewport._draw_trails(view, 1200, 800)
         self.assertEqual(view.trail_buffer.write.call_count, len(BODIES))
         for index, call in enumerate(view.trail_buffer.write.call_args_list):

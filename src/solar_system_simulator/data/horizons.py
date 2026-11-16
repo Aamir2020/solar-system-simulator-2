@@ -73,7 +73,7 @@ def parse_vectors(payload, expected_jd=None):
         raise HorizonsError("NASA vector table contained non-finite numbers.")
     if expected_jd is not None and abs(jd - expected_jd) > 1e-7:
         raise HorizonsError("NASA returned vectors for a different epoch.")
-    return values[:2] * 1000, values[3:5] * 1000
+    return values[:3] * 1000, values[3:6] * 1000
 
 
 class HorizonsClient:

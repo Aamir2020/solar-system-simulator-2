@@ -1,0 +1,234 @@
+{
+  "method": "Fixed-step kick-drift-kick leapfrog, 3D Newtonian nine-body gravity",
+  "initial_vectors": "tests/fixtures/nasa_horizons_2026-01-01.json",
+  "initial_vectors_source": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "epoch_tdb": "2026-01-01T00:00:00",
+  "duration_days": 1825,
+  "sampling_interval_days": 1,
+  "scope": "Numerical convergence within this model, not agreement with future NASA ephemerides. Local masses are unchanged; moons and relativity are excluded. Conservation errors and position differences are sampled daily.",
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "2.0.0",
+    "platform": "Linux x86_64"
+  },
+  "reference": {
+    "dt_seconds": 900.0,
+    "steps": 175200,
+    "runtime_seconds": 10.663546661002329,
+    "max_sampled_relative_energy_error": 2.9193192630203547e-10,
+    "final_relative_energy_error": -5.246021062283701e-11,
+    "max_sampled_scaled_momentum_error": 2.918539506133585e-14,
+    "max_sampled_relative_angular_momentum_error": 3.128259575179136e-14
+  },
+  "reference_check_30_min_vs_15_min": {
+    "dt_seconds": 1800.0,
+    "steps": 87600,
+    "runtime_seconds": 5.528887569991639,
+    "max_sampled_relative_energy_error": 1.167900527758349e-09,
+    "final_relative_energy_error": -2.1007325902438493e-10,
+    "max_sampled_scaled_momentum_error": 1.6352875064988495e-14,
+    "max_sampled_relative_angular_momentum_error": 1.4692685803928493e-14,
+    "max_sampled_heliocentric_position_error_km": 4110.49172280177,
+    "final_max_heliocentric_position_error_km": 3433.3875227018116,
+    "bodies": {
+      "Sun": {
+        "max_sampled_position_error_km": 0.0,
+        "final_position_error_km": 0.0
+      },
+      "Mercury": {
+        "max_sampled_position_error_km": 4110.49172280177,
+        "final_position_error_km": 3433.3875227018116
+      },
+      "Venus": {
+        "max_sampled_position_error_km": 458.5855971177922,
+        "final_position_error_km": 454.85757845212015
+      },
+      "Earth": {
+        "max_sampled_position_error_km": 157.76432017633076,
+        "final_position_error_km": 155.81986177311302
+      },
+      "Mars": {
+        "max_sampled_position_error_km": 45.824184385033185,
+        "final_position_error_km": 45.824184385033185
+      },
+      "Jupiter": {
+        "max_sampled_position_error_km": 0.3513733248546641,
+        "final_position_error_km": 0.3513733248546641
+      },
+      "Saturn": {
+        "max_sampled_position_error_km": 0.026818139731224388,
+        "final_position_error_km": 0.026657712035551718
+      },
+      "Uranus": {
+        "max_sampled_position_error_km": 0.003847117496329248,
+        "final_position_error_km": 0.0025806913217502076
+      },
+      "Neptune": {
+        "max_sampled_position_error_km": 0.0019065427399033216,
+        "final_position_error_km": 0.00032362740517325145
+      }
+    }
+  },
+  "timesteps": [
+    {
+      "dt_seconds": 86400.0,
+      "steps": 1825,
+      "runtime_seconds": 0.4264776240015635,
+      "max_sampled_relative_energy_error": 2.6531739164197625e-06,
+      "final_relative_energy_error": -4.7654599839206874e-07,
+      "max_sampled_scaled_momentum_error": 2.123140214744732e-15,
+      "max_sampled_relative_angular_momentum_error": 2.3705436239012613e-15,
+      "max_sampled_heliocentric_position_error_km": 12542123.708198354,
+      "final_max_heliocentric_position_error_km": 10492340.447674094,
+      "bodies": {
+        "Sun": {
+          "max_sampled_position_error_km": 0.0,
+          "final_position_error_km": 0.0
+        },
+        "Mercury": {
+          "max_sampled_position_error_km": 12542123.708198354,
+          "final_position_error_km": 10492340.447674094
+        },
+        "Venus": {
+          "max_sampled_position_error_km": 1408129.528128124,
+          "final_position_error_km": 1396685.3135816804
+        },
+        "Earth": {
+          "max_sampled_position_error_km": 484554.3779518515,
+          "final_position_error_km": 478579.78003609163
+        },
+        "Mars": {
+          "max_sampled_position_error_km": 140751.75232842696,
+          "final_position_error_km": 140751.75232842696
+        },
+        "Jupiter": {
+          "max_sampled_position_error_km": 1078.9455722821026,
+          "final_position_error_km": 1078.9455722821026
+        },
+        "Saturn": {
+          "max_sampled_position_error_km": 82.60224266121573,
+          "final_position_error_km": 82.01044694017482
+        },
+        "Uranus": {
+          "max_sampled_position_error_km": 11.650016438668835,
+          "final_position_error_km": 7.6618760190156
+        },
+        "Neptune": {
+          "max_sampled_position_error_km": 6.218098022346562,
+          "final_position_error_km": 1.4163925612513746
+        }
+      }
+    },
+    {
+      "dt_seconds": 21600.0,
+      "steps": 7300,
+      "runtime_seconds": 0.764108944000327,
+      "max_sampled_relative_energy_error": 1.6803308758621057e-07,
+      "final_relative_energy_error": -3.0223721950753336e-08,
+      "max_sampled_scaled_momentum_error": 5.664985797808001e-15,
+      "max_sampled_relative_angular_momentum_error": 6.4749013266458945e-15,
+      "max_sampled_heliocentric_position_error_km": 787578.7405566047,
+      "final_max_heliocentric_position_error_km": 657913.6557445367,
+      "bodies": {
+        "Sun": {
+          "max_sampled_position_error_km": 0.0,
+          "final_position_error_km": 0.0
+        },
+        "Mercury": {
+          "max_sampled_position_error_km": 787578.7405566047,
+          "final_position_error_km": 657913.6557445367
+        },
+        "Venus": {
+          "max_sampled_position_error_km": 87893.76280556325,
+          "final_position_error_km": 87179.245273203
+        },
+        "Earth": {
+          "max_sampled_position_error_km": 30238.033756846915,
+          "final_position_error_km": 29865.343153662085
+        },
+        "Mars": {
+          "max_sampled_position_error_km": 8782.916674058517,
+          "final_position_error_km": 8782.916674058517
+        },
+        "Jupiter": {
+          "max_sampled_position_error_km": 67.33153999447157,
+          "final_position_error_km": 67.33153999447157
+        },
+        "Saturn": {
+          "max_sampled_position_error_km": 5.150112964382755,
+          "final_position_error_km": 5.118856727886381
+        },
+        "Uranus": {
+          "max_sampled_position_error_km": 0.7298640610187901,
+          "final_position_error_km": 0.4865440129141673
+        },
+        "Neptune": {
+          "max_sampled_position_error_km": 0.39096457154474795,
+          "final_position_error_km": 0.09663458402073699
+        }
+      }
+    },
+    {
+      "dt_seconds": 3600.0,
+      "steps": 43800,
+      "runtime_seconds": 2.881781165007851,
+      "max_sampled_relative_energy_error": 4.671546986599278e-09,
+      "final_relative_energy_error": -8.403313997239865e-10,
+      "max_sampled_scaled_momentum_error": 9.15222056036193e-15,
+      "max_sampled_relative_angular_momentum_error": 2.0214166073044103e-14,
+      "max_sampled_heliocentric_position_error_km": 20552.31466176009,
+      "final_max_heliocentric_position_error_km": 17166.855320113427,
+      "bodies": {
+        "Sun": {
+          "max_sampled_position_error_km": 0.0,
+          "final_position_error_km": 0.0
+        },
+        "Mercury": {
+          "max_sampled_position_error_km": 20552.31466176009,
+          "final_position_error_km": 17166.855320113427
+        },
+        "Venus": {
+          "max_sampled_position_error_km": 2292.929995431485,
+          "final_position_error_km": 2274.2899313648795
+        },
+        "Earth": {
+          "max_sampled_position_error_km": 788.8227612391636,
+          "final_position_error_km": 779.1005939674673
+        },
+        "Mars": {
+          "max_sampled_position_error_km": 229.12009090148192,
+          "final_position_error_km": 229.12009090148192
+        },
+        "Jupiter": {
+          "max_sampled_position_error_km": 1.7565735665270392,
+          "final_position_error_km": 1.7565735665270392
+        },
+        "Saturn": {
+          "max_sampled_position_error_km": 0.13428337174761085,
+          "final_position_error_km": 0.13347722467569656
+        },
+        "Uranus": {
+          "max_sampled_position_error_km": 0.01909872573159524,
+          "final_position_error_km": 0.012754048783016048
+        },
+        "Neptune": {
+          "max_sampled_position_error_km": 0.01014429925442197,
+          "final_position_error_km": 0.0024737644922920203
+        }
+      }
+    }
+  ],
+  "coordinate_frame": "ICRF / ecliptic J2000 \u00b7 solar-system barycenter \u00b7 3D physics / 2D view",
+  "gravitational_constant_si": 6.6743e-11,
+  "masses_kg": {
+    "Sun": 1.989e+30,
+    "Mercury": 3.302e+23,
+    "Venus": 4.869e+24,
+    "Earth": 5.972e+24,
+    "Mars": 6.417e+23,
+    "Jupiter": 1.898e+27,
+    "Saturn": 5.683e+26,
+    "Uranus": 8.681e+25,
+    "Neptune": 1.04e+26
+  }
+}

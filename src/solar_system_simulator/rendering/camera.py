@@ -15,7 +15,8 @@ class Camera:
 
     def to_screen(self, positions, width, height):
         scale = height / self.span
-        return (np.asarray(positions) - self.center) * [scale, -scale] + [width/2, height/2]
+        # Project only for display; the simulation retains all three coordinates.
+        return (np.asarray(positions)[..., :2] - self.center) * [scale, -scale] + [width/2, height/2]
 
     def to_world(self, point, width, height):
         return self.center + (np.asarray(point) - [width/2, height/2]) * [1, -1] * self.span/height
@@ -40,7 +41,7 @@ class Camera:
 
     def preset(self, center, span):
         self._zoom_anchor = None
-        self.target_center = np.array(center, dtype=np.float64, copy=True)
+        self.target_center = np.array(center, dtype=np.float64, copy=True)[:2]
         self.target_span = float(np.clip(span, .00005 * AU, 2000 * AU))
 
     def animate(self, dt, follow=None):
@@ -53,7 +54,7 @@ class Camera:
         if follow is not None:
             # Use the same interpolated body position as the renderer. Easing toward a
             # moving position creates lag that becomes visible at high magnification.
-            self.center = np.array(follow, dtype=np.float64, copy=True)
+            self.center = np.array(follow, dtype=np.float64, copy=True)[:2]
             self.target_center = self.center.copy()
             self._zoom_anchor = None
         elif self._zoom_anchor is not None:

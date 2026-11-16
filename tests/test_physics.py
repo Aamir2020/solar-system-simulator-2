@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 from solar_system_simulator.physics.system import G, State, accelerations, energy, step
 from solar_system_simulator.physics.runner import StepBudget
+from support import sample_scenario
 
 
 class PhysicsTests(unittest.TestCase):
@@ -13,15 +14,17 @@ class PhysicsTests(unittest.TestCase):
         omega = np.sqrt(G*m.sum()/distance**3)
         fraction = m[1]/m.sum()
         x = np.array([-fraction*distance,(1-fraction)*distance])
-        return State(np.column_stack((x,[0.,0.])),
-                     np.column_stack(([0.,0.],omega*x)),m), 2*np.pi/omega
+        return State(np.column_stack((x,[0.,0.],[0.,0.])),
+                     np.column_stack(([0.,0.],omega*x,[0.,0.])),m), 2*np.pi/omega
 
     def test_original_solver_regression(self):
         data=json.loads((Path(__file__).parent/'fixtures/original_solver.json').read_text())
-        state=State(**data['initial'])
+        state=sample_scenario().state
         for _ in range(data['steps']):step(state,data['dt'])
-        np.testing.assert_allclose(state.positions,data['positions'],rtol=2e-14,atol=.002)
-        np.testing.assert_allclose(state.velocities,data['velocities'],rtol=2e-14,atol=1e-8)
+        np.testing.assert_allclose(state.positions[:, :2],data['positions'],rtol=2e-14,atol=.002)
+        np.testing.assert_allclose(state.velocities[:, :2],data['velocities'],rtol=2e-14,atol=1e-8)
+        np.testing.assert_array_equal(state.positions[:, 2], 0)
+        np.testing.assert_array_equal(state.velocities[:, 2], 0)
 
     def test_circular_orbit_energy_and_momentum(self):
         state,period=self.two_body()
@@ -53,10 +56,32 @@ class PhysicsTests(unittest.TestCase):
         force=accelerations(state.positions,state.masses)*state.masses[:,None]
         np.testing.assert_allclose(force[0],-force[1],rtol=1e-15)
 
+    def test_gravity_and_energy_use_z_even_when_xy_overlap(self):
+        state = State([[0, 0, -1], [0, 0, 1]], np.zeros((2, 3)), [1, 2])
+        acceleration = accelerations(state.positions, state.masses)
+        np.testing.assert_allclose(acceleration, [[0, 0, G / 2], [0, 0, -G / 4]])
+        self.assertAlmostEqual(energy(state) / G, -1.)
+        step(state, .1)
+        self.assertGreater(state.velocities[0, 2], 0)
+        self.assertLess(state.velocities[1, 2], 0)
+
+    def test_rotating_the_orbit_rotates_the_solution(self):
+        state, period = self.two_body()
+        angle = .7
+        rotation = np.array([[1, 0, 0], [0, np.cos(angle), -np.sin(angle)],
+                             [0, np.sin(angle), np.cos(angle)]])
+        rotated = State(state.positions @ rotation.T, state.velocities @ rotation.T, state.masses)
+        for _ in range(100):
+            step(state, period / 2000)
+            step(rotated, period / 2000)
+        np.testing.assert_allclose(rotated.positions, state.positions @ rotation.T, rtol=1e-13)
+        np.testing.assert_allclose(rotated.velocities, state.velocities @ rotation.T, rtol=1e-13)
+
     def test_invalid_states_and_collisions(self):
-        with self.assertRaises(ValueError):State([[0,0]],[[0,0]],[-1])
-        with self.assertRaises(ValueError):State([[float('nan'),0]],[[0,0]],[1])
-        s=State([[0,0],[0,0]],[[0,0],[0,0]],[1,1])
+        with self.assertRaises(ValueError):State([[0,0,0]],[[0,0,0]],[-1])
+        with self.assertRaises(ValueError):State([[float('nan'),0,0]],[[0,0,0]],[1])
+        with self.assertRaisesRegex(ValueError, r'\(N, 3\)'):State([[0,0]],[[0,0]],[1])
+        s=State([[0,0,0],[0,0,0]],[[0,0,0],[0,0,0]],[1,1])
         with self.assertRaisesRegex(ValueError,'collisions'):step(s,1)
         for dt in (0,-1,float('nan'),float('inf')):
             with self.assertRaises(ValueError):step(s,dt)

@@ -1,4 +1,6 @@
 import importlib.util
+from io import StringIO
+import json
 import os
 import subprocess
 import sys
@@ -17,13 +19,20 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(exit.exception.code, 2)
 
     def test_headless_uses_nasa_client_instead_of_bundled_state(self):
-        from support import sample_scenario
-        scenario = sample_scenario()
+        from scripts.benchmark_physics import load_scenario
+        from solar_system_simulator.physics.system import DEFAULT_DT
+        scenario = load_scenario()
         with patch('solar_system_simulator.data.horizons.HorizonsClient.load', return_value=scenario) as load, \
-             patch('sys.stdout') as stdout:
+             patch('sys.stdout', new_callable=StringIO) as stdout:
             self.assertEqual(main(['--headless', '--epoch', '2026-01-01', '--steps', '2']), 0)
         load.assert_called_once_with('2026-01-01')
-        self.assertIn('relative_energy_change', str(stdout.write.call_args_list))
+        report = json.loads(stdout.getvalue())
+        self.assertIn('relative_energy_change', report)
+        self.assertEqual(report['dt_seconds'], DEFAULT_DT)
+        self.assertEqual(report['elapsed_days'], 2*DEFAULT_DT/86400)
+        self.assertEqual(len(report['positions_m']), 9)
+        self.assertTrue(all(len(position) == 3 for position in report['positions_m']))
+        self.assertGreater(abs(report['positions_m'][1][2]), 1e6)
 
     def test_older_python_rejects_incompatible_bindings(self):
         for python in ((3, 10), (3, 11)):

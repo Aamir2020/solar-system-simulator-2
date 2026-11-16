@@ -20,6 +20,7 @@ from .. import APP_NAME
 from ..data.catalog import AU, BODIES, DAY
 from ..data.horizons import Cancelled, HorizonsClient, HorizonsError
 from ..physics.runner import SimulationRunner
+from ..physics.system import DEFAULT_DT
 from ..rendering.viewport import Viewport
 from .style import STYLE
 from .icons import application_icon, body_icon
@@ -162,7 +163,8 @@ class MainWindow(QMainWindow):
         self.body_name = label('Sun', 'title')
         column.addWidget(self.body_name)
         self.metrics = {}
-        for key in ('Mass','Radius','Speed · barycentric','Distance from Sun','X · barycentric','Y · barycentric'):
+        for key in ('Mass','Radius','Speed · barycentric','Distance from Sun',
+                    'X · barycentric','Y · barycentric','Z · barycentric'):
             column.addWidget(label(key.upper(), 'eyebrow'))
             metric = label('—','metric')
             self.metrics[key] = metric
@@ -189,7 +191,7 @@ class MainWindow(QMainWindow):
         column.addWidget(button('Save screenshot…', self._screenshot))
         column.addSpacing(12)
         column.addWidget(label('REFERENCE FRAME', 'eyebrow'))
-        column.addWidget(label('ICRF / ecliptic J2000\nSolar-system barycenter\n2D projection · SI physics', 'muted'))
+        column.addWidget(label('ICRF / ecliptic J2000\nSolar-system barycenter\n3D physics · 2D view · SI units', 'muted'))
         column.addStretch()
         scroll.setWidget(inner)
         outer.addWidget(scroll)
@@ -222,9 +224,10 @@ class MainWindow(QMainWindow):
         self.timestep = QComboBox()
         for text, seconds in [('1 hour',3600),('6 hours',21600),('1 day',DAY)]:
             self.timestep.addItem(text,seconds)
-        self.timestep.setCurrentIndex(2)
+        self.timestep.setCurrentIndex(self.timestep.findData(DEFAULT_DT))
         self.timestep.currentIndexChanged.connect(self._configure)
-        self.timestep.setToolTip('Numerical integration timestep; independent of playback speed')
+        self.timestep.setToolTip('1 hour is the accuracy default. Larger steps allow faster playback '
+                                 'with more orbital error. Independent of playback speed.')
         self.timestep.setAccessibleName('Integration timestep')
         controls.addWidget(self.timestep)
         controls.addStretch()
@@ -469,7 +472,8 @@ class MainWindow(QMainWindow):
             values = {'Speed · barycentric': f'{np.linalg.norm(snapshot.velocities[index])/1000:,.3f} km/s',
                       'Distance from Sun': f'{np.linalg.norm(position-snapshot.positions[0])/AU:,.5f} AU',
                       'X · barycentric': f'{position[0]/AU:+,.6f} AU',
-                      'Y · barycentric': f'{position[1]/AU:+,.6f} AU'}
+                      'Y · barycentric': f'{position[1]/AU:+,.6f} AU',
+                      'Z · barycentric': f'{position[2]/AU:+,.6f} AU'}
             for key,value in values.items():
                 self.metrics[key].setText(value)
         self.follow_button.setEnabled(index is not None and self.scenario is not None)
@@ -513,8 +517,9 @@ class MainWindow(QMainWindow):
             'H: home · F: follow · I: inspector · F11: fullscreen\n\n'
             'SIMULATION\nSpace: play/pause · N: one step · R: restart\nCtrl+S: screenshot · F1: help\n\n'
             'SCIENCE\nNewtonian pairwise gravity and kick–drift–kick leapfrog. '
-            'Two-dimensional projection; no moons, collisions, relativity, or planet rotation. '
-            'The one-day timestep preserves the original baseline; choose smaller steps for convergence.\n\n'
+            'Three-dimensional physics with a two-dimensional view; '
+            'no moons, collisions, relativity, or planet rotation. '
+            'The default timestep is one hour. Larger steps trade accuracy for speed.\n\n'
             'NASA initializes the state; subsequent motion is integrated locally. '
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
             'Trails show simulated history. Default radii are exaggerated.\n\n'

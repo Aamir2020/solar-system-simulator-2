@@ -1,8 +1,9 @@
-"""Pairwise gravity and kick–drift–kick leapfrog, preserving the original method."""
+"""Three-dimensional pairwise gravity and kick–drift–kick leapfrog."""
 from dataclasses import dataclass
 import numpy as np
 
 G = 6.67430e-11
+DEFAULT_DT = 3600.0
 
 
 @dataclass
@@ -17,8 +18,8 @@ class State:
         self.velocities = np.array(self.velocities, dtype=np.float64, copy=True)
         self.masses = np.array(self.masses, dtype=np.float64, copy=True)
         n = len(self.masses)
-        if self.positions.shape != (n, 2) or self.velocities.shape != (n, 2) or not n:
-            raise ValueError("State requires non-empty (N, 2) positions and velocities.")
+        if self.positions.shape != (n, 3) or self.velocities.shape != (n, 3) or not n:
+            raise ValueError("State requires non-empty (N, 3) positions and velocities.")
         if self.masses.shape != (n,) or np.any(self.masses <= 0):
             raise ValueError("Masses must be a positive one-dimensional array.")
         if not all(np.isfinite(a).all() for a in
