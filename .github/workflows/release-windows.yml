@@ -93,6 +93,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: windows-release
@@ -108,7 +113,14 @@ jobs:
           if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release/* --repo "$GH_REPO" --clobber
           else
-            options=(--verify-tag --generate-notes --title "$RELEASE_TAG")
+            notes_file="$RUNNER_TEMP/release-notes.md"
+            previous_tag=$(python3 scripts/release_notes.py \
+              --tag "$RELEASE_TAG" --repository "$GH_REPO" --output "$notes_file")
+            cat "$notes_file" >> "$GITHUB_STEP_SUMMARY"
+            options=(--verify-tag --generate-notes --title "$RELEASE_TAG" --notes-file "$notes_file")
+            if [[ -n "$previous_tag" ]]; then
+              options+=(--notes-start-tag "$previous_tag")
+            fi
             if [[ "$RELEASE_TAG" == *-* ]]; then
               options+=(--prerelease)
             fi
