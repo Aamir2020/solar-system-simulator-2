@@ -6,7 +6,7 @@ import numpy as np
 
 from solar_system_simulator.data.catalog import AU, BODIES
 from solar_system_simulator.rendering.camera import Camera
-from solar_system_simulator.rendering.scene import trail_history, trail_vertices
+from solar_system_simulator.rendering.scene import orbit_trail, trail_history, trail_vertices
 from solar_system_simulator.rendering.viewport import Viewport
 
 DAY = 86400.
@@ -88,3 +88,54 @@ class TrailTests(unittest.TestCase):
         self.assertTrue(np.all(vertices[:, 2] >= 1e-5-1e-10))
         crossing[:, 2] += 3*distance
         self.assertEqual(len(trail_vertices(camera, crossing, 1200, 800)), 0)
+
+    def test_bends_share_edges_instead_of_overlapping_independent_quads(self):
+        camera = Camera()
+        camera.top_down()
+        path = np.array([[-.3, -.2, 0], [0, -.2, 0], [0, .2, 0], [.3, .2, 0]])*camera.span
+        vertices = trail_vertices(camera, path, 1200, 800).reshape(-1, 6, 6)
+        self.assertEqual(len(vertices), 3)
+        np.testing.assert_array_equal(vertices[:-1, 2], vertices[1:, 0])
+        np.testing.assert_array_equal(vertices[:-1, 5], vertices[1:, 1])
+
+    def test_width_and_fade_grow_toward_planet_by_distance_not_sample_count(self):
+        camera = Camera()
+        camera.top_down()
+        path = np.array([[-.4, 0, 0], [-.3, 0, 0], [.4, 0, 0]])*camera.span
+        vertices = trail_vertices(camera, path, 1200, 800).reshape(-1, 6, 6)
+        self.assertAlmostEqual(vertices[0, 0, 5], 0.)
+        self.assertAlmostEqual(vertices[0, 2, 5], .125)
+        self.assertAlmostEqual(vertices[-1, 5, 5], 1.)
+        offsets = np.linalg.norm(vertices[:, :, 3:5], axis=-1)
+        self.assertLess(offsets[0, 0], offsets[0, 2])
+        self.assertLess(offsets[0, 2], offsets[-1, 5])
+
+    def test_only_latest_revolution_is_retained_about_moving_sun(self):
+        # Inclination and solar motion must not change where a lap is cut.
+        angles = np.linspace(0, 6*np.pi, 241)
+        orbit = np.column_stack((np.cos(angles), .8*np.sin(angles), .6*np.sin(angles)))*AU
+        centers = np.column_stack((angles*.02*AU, angles*0, angles*.01*AU))
+        path = orbit + centers
+        original = path.copy()
+        result = orbit_trail(path, centers)
+        np.testing.assert_allclose(result, path[-81:], atol=.002)
+        np.testing.assert_array_equal(result[-1], path[-1])
+        np.testing.assert_array_equal(path, original)
+        partial = orbit_trail(path[:40], centers[:40])
+        np.testing.assert_array_equal(partial, path[:40])
+
+    def test_revolution_boundary_between_samples_keeps_interpolated_tail(self):
+        angles = np.linspace(0, 7, 30)
+        path = np.column_stack((np.cos(angles), np.sin(angles), angles*0))*AU
+        result = orbit_trail(path, np.zeros_like(path))
+        start = np.searchsorted(angles, angles[-1]-2*np.pi)-1
+        fraction = (angles[-1]-2*np.pi-angles[start])/(angles[start+1]-angles[start])
+        np.testing.assert_allclose(result[0], path[start]+fraction*(path[start+1]-path[start]), atol=.001)
+        np.testing.assert_array_equal(result[1:], path[start+1:])
+
+    def test_stationary_and_repeated_samples_are_finite(self):
+        camera = Camera()
+        stationary = np.zeros((8, 3))
+        self.assertEqual(len(trail_vertices(camera, stationary, 1200, 800)), 0)
+        path = np.array([[-.2, 0, 0], [0, 0, 0], [0, 0, 0], [.2, 0, 0]])*camera.span
+        self.assertTrue(np.isfinite(trail_vertices(camera, path, 1200, 800)).all())

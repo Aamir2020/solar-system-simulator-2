@@ -8,7 +8,7 @@ import numpy as np
 from ..data.catalog import BODIES
 from ..theme import COLORS
 from .geometry import axial_rotation, ring_mesh, sphere_mesh
-from .scene import body_layout, trail_vertices
+from .scene import body_layout, orbit_trail, trail_vertices
 from .textures import load_texture
 
 
@@ -133,7 +133,10 @@ class SceneRenderer:
             self.trail['focal'].value = focal
             self.trail['log_far'].value = log_far
             for index, body in enumerate(BODIES):
-                vertices = trail_vertices(camera, history[:, index], width, height)
+                path = history[:, index]
+                if index:
+                    path = orbit_trail(path, history[:, 0])
+                vertices = trail_vertices(camera, path, width, height)
                 if not len(vertices):
                     continue
                 self.trail_buffer.write(vertices.tobytes())

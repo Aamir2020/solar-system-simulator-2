@@ -2,7 +2,7 @@
 in vec3 in_pos;
 in vec2 in_offset;
 in float in_age;
-out float side;
+noperspective out float side;
 out float age;
 out float depth;
 uniform vec2 viewport;

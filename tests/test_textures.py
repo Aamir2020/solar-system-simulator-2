@@ -135,3 +135,35 @@ class TextureRenderingTests(unittest.TestCase):
                 self.assertGreater(np.count_nonzero(image[:, :, :3] != baseline[:, :, :3]), 100)
                 self.assertTrue(np.all(image[:, :, 3] == 255),
                                 f'Transparent viewport pixels: minimum alpha {image[:, :, 3].min()}')
+
+    def test_orbit_fades_toward_tail_without_brightening_from_older_laps(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        camera.top_down()
+        camera.span = 4*AU
+        positions = np.tile([100*AU, 100*AU, 0.], (len(BODIES), 1))
+        positions[0] = 0
+        positions[3] = [AU, 0, 0]
+
+        def history(turns):
+            angles = np.linspace(0, turns*2*np.pi, turns*160+1)
+            result = np.tile(positions, (len(angles), 1, 1))
+            result[:, 3] = np.column_stack((np.cos(angles), np.sin(angles), angles*0))*AU
+            return result
+
+        options = {'physical': True, 'effects': False, 'stars': False}
+        baseline = self.draw(camera, positions, **options)
+        single = self.draw(camera, positions, history=history(1), **options)
+        repeated = self.draw(camera, positions, history=history(3), **options)
+        self.assertLessEqual(np.abs(single.astype(int)-repeated.astype(int)).max(), 1)
+        difference = np.linalg.norm(single[:, :, :3].astype(float)-baseline[:, :, :3], axis=-1)
+        y, x = np.mgrid[:160, :160]
+        angle = np.arctan2(y+.5-80, x+.5-80) % (2*np.pi)
+        tail = difference[(angle > .2*np.pi) & (angle < .4*np.pi)].sum()
+        head = difference[(angle > 1.6*np.pi) & (angle < 1.8*np.pi)].sum()
+        self.assertGreater(tail, 0)
+        self.assertGreater(head, 3*tail)
+        self.assertTrue(np.all(repeated[:, :, 3] == 255))
