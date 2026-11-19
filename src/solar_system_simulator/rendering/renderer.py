@@ -7,6 +7,7 @@ import numpy as np
 
 from ..data.catalog import BODIES
 from ..theme import COLORS
+from .appearance import POINT_COLORS
 from .geometry import axial_rotation, ring_mesh, sphere_mesh
 from .scene import body_layout, orbit_trail, trail_vertices
 from .textures import load_texture
@@ -70,7 +71,7 @@ class SceneRenderer:
     def draw(self, camera, positions, width, height, *, physical=False, effects=True,
              stars=True, sky_brightness=.45, history=None):
         ctx = self.ctx
-        ctx.depth_mask = True
+        ctx.fbo.depth_mask = True
         ctx.clear(*rgb(COLORS['space']), 1., depth=1.)
         ctx.disable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
         ctx.enable(moderngl.BLEND)
@@ -120,14 +121,17 @@ class SceneRenderer:
             program['light_dir'].value = tuple(camera.view_rotation @ light)
             program['light_local'].value = tuple(rotation.T @ light)
             program['kind'].value = kind
+            program['opacity'].value = float(1 - layout.point_weights[index])
 
         for index in range(len(BODIES)):
+            if layout.point_weights[index] >= 1:
+                continue
             if centers[index, 2] + layout.world_radii[index]/camera.distance <= 0:
                 continue
             body_uniforms(index, index)
             self.textures[index].use(0)
             self.sphere.render()
-        ctx.depth_mask = False
+        ctx.fbo.depth_mask = False
         if history is not None and len(history) >= 2:
             self.trail['viewport'].value = (width, height)
             self.trail['focal'].value = focal
@@ -146,11 +150,25 @@ class SceneRenderer:
             body_uniforms(6, 9)
             self.ring_texture.use(0)
             self.rings.render()
-            if layout.depths[0] > 0 and np.isfinite(layout.points[0]).all():
-                self.glow['viewport'].value = (width, height)
-                self.glow['center'].value = tuple(layout.points[0])
-                self.glow['extent'].value = float(layout.screen_radii[0]*3.5)
-                self.glow['sun_depth'].value = float(centers[0, 2])
-                self.glow['log_far'].value = log_far
-                self.glow_vao.render()
-        ctx.depth_mask = True
+        self.glow['viewport'].value = (width, height)
+        self.glow['log_far'].value = log_far
+        self.glow['effects'].value = effects
+        # Composite distant points back-to-front, with depth testing against the
+        # resolved bodies. The point pass also runs with decorative effects off.
+        for index in np.argsort(layout.depths)[::-1]:
+            weight = float(layout.point_weights[index])
+            if not layout.visible[index] or (weight == 0 and (index != 0 or not effects)):
+                continue
+            self.glow['center'].value = tuple(layout.points[index])
+            self.glow['extent'].value = float(max(layout.disc_radii[index]*3.5,
+                                                  layout.light_radii[index]*4))
+            depth = centers[index, 2]
+            if weight > 0:
+                depth -= layout.world_radii[index]/camera.distance
+            self.glow['sun_depth'].value = float(max(depth, 1e-8))
+            self.glow['light_color'].value = rgb(POINT_COLORS[index])
+            self.glow['point_weight'].value = weight
+            self.glow['core_radius'].value = float(layout.light_radii[index])
+            self.glow['is_sun'].value = bool(index == 0)
+            self.glow_vao.render()
+        ctx.fbo.depth_mask = True

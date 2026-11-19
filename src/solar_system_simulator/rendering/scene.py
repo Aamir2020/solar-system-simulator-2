@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..data.catalog import AU, BODIES
+from ..data.catalog import BODIES
+from .appearance import POINT_RADII, apparent_radii
 
 
 @dataclass
@@ -14,18 +15,22 @@ class BodyLayout:
     world_radii: np.ndarray
     screen_radii: np.ndarray
     visible: np.ndarray
+    disc_radii: np.ndarray
+    point_weights: np.ndarray
+    light_radii: np.ndarray
 
 
 def body_layout(camera, positions, width, height, physical=False):
     points, depths = camera.project(positions, width, height)
     focal = height / (2*math.tan(camera.fov / 2))
     radii = np.array([body.radius for body in BODIES])
-    if not physical:
-        pixels = np.array([13, 4, 6, 6.5, 5, 11, 10, 8, 8])
-        pixels *= np.clip((5*AU/camera.span)**.13, .75, 2.4)
-        radii = np.maximum(radii, pixels*np.maximum(depths, 0)/focal)
+    radii = apparent_radii(radii, depths, focal, physical)
     projected = focal*radii/np.sqrt(np.maximum(depths**2 - radii**2, 1.))
     projected = np.minimum(projected, 4*max(width, height))
+    transition = np.clip((projected - 2)/4, 0, 1)
+    point_weights = 1 - transition**2*(3 - 2*transition)
+    light_radii = np.maximum(POINT_RADII, projected*.8)
+    screen_radii = np.maximum(projected, light_radii*point_weights)
     visible = (depths > radii) & np.isfinite(points).all(axis=1)
     for far in range(len(BODIES)):
         if not visible[far]:
@@ -33,10 +38,11 @@ def body_layout(camera, positions, width, height, physical=False):
         for near in range(len(BODIES)):
             if near == far or not visible[near] or depths[near] >= depths[far]:
                 continue
-            if np.linalg.norm(points[far] - points[near]) + projected[far] < projected[near]:
+            if np.linalg.norm(points[far] - points[near]) + screen_radii[far] < screen_radii[near]:
                 visible[far] = False
                 break
-    return BodyLayout(points, depths, radii, projected, visible)
+    return BodyLayout(points, depths, radii, screen_radii, visible,
+                      projected, point_weights, light_radii)
 
 
 def trail_history(snapshot, elapsed, positions, limit):

@@ -101,6 +101,56 @@ class TextureRenderingTests(unittest.TestCase):
         hidden = self.draw(camera, None, stars=False)
         self.assertGreater(np.count_nonzero(initial[:, :, :3] != hidden[:, :, :3]), 100)
 
+    def test_distant_points_keep_colors_and_solar_dominance_with_effects_on_or_off(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.appearance import POINT_COLORS
+        from solar_system_simulator.rendering.camera import Camera
+        from solar_system_simulator.rendering.renderer import rgb
+        camera = Camera()
+        camera.top_down()
+        camera.span = 2000*AU
+        positions = np.column_stack((np.linspace(-700, 700, len(BODIES))*AU,
+                                     np.zeros((len(BODIES), 2))))
+        baseline = self.draw(camera, None, stars=False)
+        points = camera.to_screen(positions, 160, 160)
+        for effects in (False, True):
+            with self.subTest(effects=effects):
+                image = self.draw(camera, positions, stars=False, effects=effects)
+                difference = image[:, :, :3].astype(float) - baseline[:, :, :3]
+                flux, area = [], []
+                for index, (x, y) in enumerate(points):
+                    x, y = round(x), round(160-y)
+                    patch = difference[y-6:y+6, x-6:x+6]
+                    flux.append(patch.sum())
+                    area.append(np.count_nonzero(np.linalg.norm(patch, axis=-1) > 10))
+                    color = patch.reshape(-1, 3).sum(axis=0)
+                    self.assertGreater(color.sum(), 10, BODIES[index].name)
+                    expected = np.array(rgb(POINT_COLORS[index])) - baseline[y, x, :3]/255
+                    np.testing.assert_allclose(color/color.max(), expected/expected.max(), atol=.04)
+                self.assertGreater(flux[0], max(flux[1:])*3)
+                self.assertGreater(area[0], max(area[1:]))
+                self.assertTrue(np.all(image[:, :, 3] == 255))
+
+    def test_unresolved_planet_is_hidden_behind_resolved_sphere(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        camera.top_down()
+        camera.span = BODIES[0].radius*5
+        positions = np.tile([100*AU, 100*AU, 0.], (len(BODIES), 1))
+        positions[0] = 0
+        baseline = self.draw(camera, positions, physical=True, effects=False, stars=False)
+        positions[3] = [0, 0, -3*BODIES[0].radius]
+        behind = self.draw(camera, positions, physical=True, effects=False, stars=False)
+        np.testing.assert_array_equal(baseline, behind)
+        positions[3, 2] *= -1
+        front = self.draw(camera, positions, physical=True, effects=False, stars=False)
+        self.assertFalse(np.array_equal(baseline, front))
+
     def test_planets_occlude_each_other_independently_of_draw_order(self):
         import numpy as np
 

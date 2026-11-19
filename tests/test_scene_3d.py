@@ -10,6 +10,45 @@ from solar_system_simulator.rendering.scene import body_layout, pick_sphere
 
 
 class Scene3DTests(unittest.TestCase):
+    def test_zoom_shrinks_discs_into_points_and_sun_remains_largest_light(self):
+        camera = Camera()
+        camera.top_down()
+        positions = np.zeros((len(BODIES), 3))
+        original = positions.copy()
+        layouts = []
+        for span in (1, 5, 20, 80, 320, 1280, 2000):
+            camera.span = span*AU
+            layouts.append(body_layout(camera, positions, 1200, 800))
+        radii = np.array([layout.disc_radii for layout in layouts])
+        weights = np.array([layout.point_weights for layout in layouts])
+        self.assertTrue(np.all(np.diff(radii, axis=0) < 0))
+        self.assertTrue(np.all(np.diff(weights, axis=0) >= 0))
+        np.testing.assert_array_equal(weights[-1], np.ones(len(BODIES)))
+        self.assertGreater(layouts[-1].light_radii[0], layouts[-1].light_radii[1:].max())
+        np.testing.assert_array_equal(positions, original)
+
+    def test_point_transition_is_smooth_and_physical_radii_stay_physical(self):
+        camera = Camera()
+        camera.top_down()
+        positions = np.zeros((len(BODIES), 3))
+        weights = []
+        for span in np.geomspace(.0001, 2000, 600):
+            camera.span = span*AU
+            layout = body_layout(camera, positions, 1200, 800, physical=True)
+            np.testing.assert_array_equal(layout.world_radii, [body.radius for body in BODIES])
+            weights.append(layout.point_weights)
+        self.assertLess(np.abs(np.diff(weights, axis=0)).max(), .06)
+
+    def test_enlarged_disc_size_uses_observer_distance_when_panning_away(self):
+        camera = Camera()
+        camera.top_down()
+        positions = np.zeros((len(BODIES), 3))
+        near = body_layout(camera, positions, 1200, 800)
+        camera.center[2] = 500*AU
+        far = body_layout(camera, positions, 1200, 800)
+        self.assertTrue(np.all(far.disc_radii < near.disc_radii))
+        self.assertTrue(np.all(far.point_weights >= near.point_weights))
+
     def test_screen_ray_passes_through_projected_world_point(self):
         camera = Camera()
         camera.center = np.array([AU, -2*AU, .1*AU])

@@ -1,0 +1,31 @@
+# Distant planets and sunlight
+
+As you move away, textured planets shrink and blend into small points of light.
+The Sun becomes a larger, brighter white point. Zooming back in restores the
+textured surfaces and Saturn's rings. Points still appear with lighting effects
+turned off and with physical planet radii enabled.
+
+The point colors are approximate sRGB display choices, not measured color values:
+
+| Body | Distant appearance |
+| --- | --- |
+| Sun | White |
+| Mercury | Warm gray-white |
+| Venus | Cream-white |
+| Earth | Pale blue |
+| Mars | Orange-red |
+| Jupiter | Cream-white |
+| Saturn | Pale gold |
+| Uranus | Pale greenish blue |
+| Neptune | Pale greenish blue, slightly bluer than Uranus |
+
+NASA describes the Sun's visible light as [white](https://soho.nascom.nasa.gov/classroom/faq.html).
+[NASA's planet-color overview](https://www.nasa.gov/centers-and-facilities/goddard/using-planet-colors-to-search-for-alien-earths/)
+and [Voyager's Pale Blue Dot](https://www.jpl.nasa.gov/news/pale-blue-dot-revisited/)
+inform the inner-planet colors. The [Cassini arrival press kit](https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf)
+describes Saturn's yellow appearance. [Oxford's reconstructed visible colors](https://www.ox.ac.uk/news/2024-01-05-new-images-reveal-what-neptune-and-uranus-really-look-0)
+inform the similar, subdued ice-giant colors.
+
+Point sizes and glow are adjusted for visibility, with the Sun dominant in wide
+views. This does not model exposure, atmospheric effects, apparent magnitudes,
+or phase-dependent brightness. The physics and NASA starting data are unchanged.

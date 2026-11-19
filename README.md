@@ -45,6 +45,8 @@ Planet sizes are enlarged by default. Physics and graphics run in 3D. NASA provi
 
 Earth has cloud and night-light maps. Saturn has textured 3D rings. Adjust sky brightness in the right panel.
 
+Zoom out to see planets shrink into colored points of light. The Sun becomes the largest, brightest white point. See [distant-body colors](docs/appearance.md) for the sources and display choices.
+
 The default physics step is **1 hour**. Larger steps allow faster playback with more orbital error.
 
 ## Tests

@@ -12,6 +12,7 @@ uniform bool effects;
 uniform vec3 light_dir;
 uniform vec3 light_local;
 uniform float log_far;
+uniform float opacity;
 void main() {
     if (view_pos.z <= 0.) discard;
     vec4 sample_color = texture(surface_map, uv);
@@ -46,6 +47,7 @@ void main() {
             color += vec3(.025, .09, .22) * rim;
         }
     }
+    alpha *= opacity;
     if (alpha < .005) discard;
     frag = vec4(pow(max(color, vec3(0)), vec3(1./2.2)), alpha);
     gl_FragDepth = log2(1. + view_pos.z) / log_far;
