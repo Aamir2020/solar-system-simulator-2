@@ -60,7 +60,7 @@ See [physics accuracy](docs/physics-accuracy.md) for the timestep comparison and
 
 ## Credits
 
-Code by Aamir Zekaria Ali, under the [MIT license](LICENSE). 
+Code is available under the [MIT license](LICENSE).
 
 Starting data comes from [NASA/JPL Horizons](https://ssd-api.jpl.nasa.gov/doc/horizons.html). 
 
