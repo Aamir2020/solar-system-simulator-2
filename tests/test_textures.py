@@ -2,6 +2,7 @@ import importlib.util
 import unittest
 from hashlib import sha256
 from importlib.resources import files
+from unittest.mock import patch
 
 from solar_system_simulator.data.catalog import BODIES
 from solar_system_simulator.rendering.textures import image_data, texture_manifest
@@ -117,18 +118,23 @@ class TextureRenderingTests(unittest.TestCase):
         points = camera.to_screen(positions, 160, 160)
         for effects in (False, True):
             with self.subTest(effects=effects):
-                image = self.draw(camera, positions, stars=False, effects=effects)
+                with patch('solar_system_simulator.rendering.renderer.point_brightness',
+                           return_value=np.ones(len(BODIES))):
+                    image = self.draw(camera, positions, stars=False, effects=effects)
                 difference = image[:, :, :3].astype(float) - baseline[:, :, :3]
                 flux, area = [], []
                 for index, (x, y) in enumerate(points):
                     x, y = round(x), round(160-y)
-                    patch = difference[y-6:y+6, x-6:x+6]
-                    flux.append(patch.sum())
-                    area.append(np.count_nonzero(np.linalg.norm(patch, axis=-1) > 10))
-                    color = patch.reshape(-1, 3).sum(axis=0)
+                    sample = difference[y-6:y+6, x-6:x+6]
+                    flux.append(sample.sum())
+                    area.append(np.count_nonzero(np.linalg.norm(sample, axis=-1) > 10))
+                    color = sample.reshape(-1, 3).sum(axis=0)
                     self.assertGreater(color.sum(), 10, BODIES[index].name)
-                    expected = np.array(rgb(POINT_COLORS[index])) - baseline[y, x, :3]/255
-                    np.testing.assert_allclose(color/color.max(), expected/expected.max(), atol=.04)
+                    if index == 0:
+                        self.assertLess(color.max()-color.min(), color.max()*.02)
+                    else:
+                        expected = np.array(rgb(POINT_COLORS[index])) - baseline[y, x, :3]/255
+                        np.testing.assert_allclose(color/color.max(), expected/expected.max(), atol=.04)
                 self.assertGreater(flux[0], max(flux[1:])*3)
                 self.assertGreater(area[0], max(area[1:]))
                 self.assertTrue(np.all(image[:, :, 3] == 255))
@@ -160,6 +166,29 @@ class TextureRenderingTests(unittest.TestCase):
         focused = self.draw(camera, state.positions, effects=False, stars=False)
         colors = np.unique(focused[50:110, 50:110, :3].reshape(-1, 3), axis=0)
         self.assertGreater(len(colors), 100)
+
+    def test_planet_point_dims_with_its_illuminated_phase(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        camera.top_down()
+        camera.span = 5*AU
+        positions = np.tile([100*AU, 100*AU, 0.], (len(BODIES), 1))
+        positions[3] = 0
+        background = self.draw(camera, None, effects=False, stars=False)
+
+        def earth_flux(sun_position):
+            positions[0] = np.asarray(sun_position)*AU
+            image = self.draw(camera, positions, effects=False, stars=False)
+            difference = np.maximum(image[:, :, :3].astype(int)-background[:, :, :3], 0)
+            return difference[74:86, 74:86].sum()
+
+        nearly_full = earth_flux([2, 0, np.sqrt(21)])
+        quarter = earth_flux([5, 0, 0])
+        self.assertGreater(nearly_full, quarter*1.15)
+        self.assertGreater(quarter, 0)
 
     def test_unresolved_planet_is_hidden_behind_resolved_sphere(self):
         import numpy as np

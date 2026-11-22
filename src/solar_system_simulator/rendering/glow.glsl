@@ -9,6 +9,7 @@ uniform float core_radius;
 uniform float point_weight;
 uniform bool effects;
 uniform bool is_sun;
+uniform float brightness;
 void main() {
     float r = length(uv);
     float distance_px = r * extent;
@@ -19,6 +20,7 @@ void main() {
         alpha += (1. - point_weight) * exp(-r * 5.) * .5;
     }
     alpha *= 1. - smoothstep(.7, 1., r);
+    alpha *= brightness;
     if (alpha < .002) discard;
     frag = vec4(light_color, min(alpha, 1.));
     gl_FragDepth = log2(1. + sun_depth) / log_far;

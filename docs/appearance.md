@@ -29,5 +29,13 @@ describes Saturn's yellow appearance. [Oxford's reconstructed visible colors](ht
 inform the similar, subdued ice-giant colors.
 
 Point sizes and glow are adjusted for visibility, with the Sun dominant in wide
-views. This does not model exposure, atmospheric effects, apparent magnitudes,
-or phase-dependent brightness. The physics and NASA starting data are unchanged.
+views. This does not model camera exposure, atmospheric effects, empirical
+apparent-magnitude curves, or wavelength-dependent scattering. The physics and
+NASA starting data are unchanged.
+
+Planet-point brightness uses each body's radius and [JPL V-band geometric
+albedo](https://ssd.jpl.nasa.gov/planets/phys_par.html), inverse-square distance
+from the Sun, inverse-square distance from the camera, and a [Lambert phase
+function](https://ntrs.nasa.gov/api/citations/20240007032/downloads/Nemati%20Stahl%20HWO%20EB%20Roman%20Lessons%20Final%20SPIE.pdf).
+The large physical range is compressed for an ordinary display. A small floor
+keeps every planet selectable, and the Sun remains the white exposure reference.

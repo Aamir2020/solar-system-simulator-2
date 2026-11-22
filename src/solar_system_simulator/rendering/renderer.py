@@ -7,7 +7,7 @@ import numpy as np
 
 from ..data.catalog import BODIES
 from ..theme import COLORS
-from .appearance import POINT_COLORS
+from .appearance import POINT_COLORS, point_brightness
 from .geometry import axial_rotation, ring_mesh, sphere_mesh
 from .scene import body_layout, orbit_trail, trail_vertices
 from .textures import load_texture
@@ -95,6 +95,7 @@ class SceneRenderer:
         if positions is None:
             return
         layout = body_layout(camera, positions, width, height, physical)
+        brightness = point_brightness(positions, camera.eye)
         centers = camera.to_view(positions)/camera.distance
         far = max(100., float(np.linalg.norm(centers, axis=1).max())*2 + 2)
         if history is not None and len(history):
@@ -170,5 +171,6 @@ class SceneRenderer:
             self.glow['point_weight'].value = weight
             self.glow['core_radius'].value = float(layout.light_radii[index])
             self.glow['is_sun'].value = bool(index == 0)
+            self.glow['brightness'].value = float(brightness[index])
             self.glow_vao.render()
         ctx.fbo.depth_mask = True
