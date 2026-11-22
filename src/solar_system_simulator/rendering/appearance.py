@@ -15,6 +15,13 @@ from ..data.catalog import AU, BODIES
 POINT_COLORS = ('#ffffff', '#e5ded4', '#fff6e5', '#b8d9ff', '#f0ad83',
                 '#f4e9cf', '#eee0b9', '#bcdcd6', '#b4d4d7')
 POINT_RADII = np.array([3., .85, 1.3, 1.05, 1., 1.2, 1., .8, .8])
+# Slightly exaggerated display shells keep thin atmospheric limbs resolvable.
+# Values are body index: (sRGB color, shell radius multiplier, optical strength).
+ATMOSPHERES = {
+    2: ('#e6c98f', 1.035, .42),
+    3: ('#5aafff', 1.030, .58),
+    4: ('#d98b62', 1.018, .16),
+}
 # V-band geometric albedos from JPL Solar System Dynamics. The Sun emits rather
 # than reflects visible light, so its entry is deliberately not used.
 GEOMETRIC_ALBEDOS = np.array([0., .106, .65, .367, .15, .52, .47, .51, .41])

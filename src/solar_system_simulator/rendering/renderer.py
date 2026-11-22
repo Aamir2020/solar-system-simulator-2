@@ -7,7 +7,7 @@ import numpy as np
 
 from ..data.catalog import BODIES
 from ..theme import COLORS
-from .appearance import POINT_COLORS, point_brightness
+from .appearance import ATMOSPHERES, POINT_COLORS, point_brightness
 from .geometry import axial_rotation, ring_mesh, sphere_mesh
 from .scene import body_layout, orbit_trail, trail_vertices
 from .textures import load_texture
@@ -27,10 +27,16 @@ class SceneRenderer:
         self.resources = []
         try:
             self.body = self.own(context.program(vertex_shader=shader('sphere_vertex'), fragment_shader=shader('body')))
+            self.atmosphere = self.own(context.program(
+                vertex_shader=shader('sphere_vertex'), fragment_shader=shader('atmosphere')))
             self.background = self.own(context.program(vertex_shader=shader('background_vertex'), fragment_shader=shader('background')))
             self.trail = self.own(context.program(vertex_shader=shader('trail_vertex'), fragment_shader=shader('trail_fragment')))
             self.glow = self.own(context.program(vertex_shader=shader('quad'), fragment_shader=shader('glow')))
             self.sphere = self.mesh(self.body, sphere_mesh())
+            atmosphere_vertices, atmosphere_indices = sphere_mesh()
+            self.atmosphere_sphere = self.mesh(
+                self.atmosphere, (atmosphere_vertices[:, :3].copy(), atmosphere_indices),
+                textured=False)
             self.rings = self.mesh(self.body, ring_mesh())
             quad = np.array([[-1,-1], [1,-1], [-1,1], [-1,1], [1,-1], [1,1]], dtype='f4')
             buffer = self.own(context.buffer(quad.tobytes()))
@@ -56,12 +62,14 @@ class SceneRenderer:
         self.resources.append(resource)
         return resource
 
-    def mesh(self, program, geometry):
+    def mesh(self, program, geometry, textured=True):
         vertices, indices = geometry
         vertex_buffer = self.own(self.ctx.buffer(vertices.tobytes()))
         index_buffer = self.own(self.ctx.buffer(indices.tobytes()))
+        content = (vertex_buffer, '3f 2f', 'in_pos', 'in_uv') if textured else (
+            vertex_buffer, '3f', 'in_pos')
         return self.own(self.ctx.vertex_array(program,
-            [(vertex_buffer, '3f 2f', 'in_pos', 'in_uv')], index_buffer=index_buffer))
+            [content], index_buffer=index_buffer))
 
     def release(self):
         for resource in reversed(self.resources):
@@ -134,6 +142,29 @@ class SceneRenderer:
             self.textures[index].use(0)
             self.sphere.render()
         ctx.fbo.depth_mask = False
+        if effects:
+            atmosphere = self.atmosphere
+            atmosphere['focal'].value = focal
+            atmosphere['log_far'].value = log_far
+            for index, (color, scale, strength) in ATMOSPHERES.items():
+                opacity = float(1 - layout.point_weights[index])
+                if not opacity or not layout.visible[index]:
+                    continue
+                rotation = axial_rotation(index)
+                atmosphere['center'].value = tuple(centers[index])
+                atmosphere['radius'].value = float(
+                    layout.world_radii[index] / camera.distance * scale)
+                atmosphere['rotation'].write(
+                    (camera.view_rotation @ rotation).T.astype('f4').tobytes())
+                atmosphere['kind'].value = index
+                light = positions[0] - positions[index]
+                length = np.linalg.norm(light)
+                light = light/length if length else np.array([0., 0., 1.])
+                atmosphere['light_dir'].value = tuple(camera.view_rotation @ light)
+                atmosphere['atmosphere_color'].value = rgb(color)
+                atmosphere['strength'].value = strength
+                atmosphere['opacity'].value = opacity
+                self.atmosphere_sphere.render()
         if history is not None and len(history) >= 2:
             self.trail['viewport'].value = (width, height)
             self.trail['focal'].value = focal

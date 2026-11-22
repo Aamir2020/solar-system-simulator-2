@@ -85,6 +85,34 @@ class TextureRenderingTests(unittest.TestCase):
         other_hemisphere = self.draw(camera, state.positions, physical=True, effects=False, stars=False)
         self.assertFalse(np.array_equal(images[0], other_hemisphere))
 
+    def test_terrestrial_atmospheres_add_opaque_sunlit_limbs(self):
+        import numpy as np
+
+        from scripts.benchmark_physics import load_scenario
+        from solar_system_simulator.rendering.appearance import ATMOSPHERES
+        from solar_system_simulator.rendering.camera import Camera
+        from solar_system_simulator.rendering.scene import body_layout
+        state = load_scenario().state
+        camera = Camera()
+        for index in ATMOSPHERES:
+            with self.subTest(body=BODIES[index].name):
+                camera.center = state.positions[index].copy()
+                camera.span = BODIES[index].radius*3
+                baseline = self.draw(camera, state.positions, physical=True,
+                                     effects=False, stars=False)
+                image = self.draw(camera, state.positions, physical=True,
+                                  effects=True, stars=False)
+                layout = body_layout(camera, state.positions, 160, 160, physical=True)
+                x, y = layout.points[index]
+                radius = layout.disc_radii[index]
+                rows, columns = np.mgrid[:160, :160]
+                distance = np.hypot(columns+.5-x, rows+.5-(160-y))
+                annulus = (distance > radius+.25) & (distance < radius*1.05+1)
+                difference = np.linalg.norm(
+                    image[:, :, :3].astype(float)-baseline[:, :, :3], axis=-1)
+                self.assertGreater(np.count_nonzero(difference[annulus] > 3), 8)
+                self.assertTrue(np.all(image[:, :, 3] == 255))
+
     def test_sky_rotates_with_view_but_does_not_move_with_pan_or_zoom(self):
         import numpy as np
 

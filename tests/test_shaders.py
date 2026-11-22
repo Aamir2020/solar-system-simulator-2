@@ -91,7 +91,8 @@ class ShaderTests(unittest.TestCase):
         return handle
 
     def test_production_shader_programs_compile_and_link(self):
-        for vertex,fragment in [('sphere_vertex','body'),('background_vertex','background'),
+        for vertex,fragment in [('sphere_vertex','body'),('sphere_vertex','atmosphere'),
+                                ('background_vertex','background'),
                                 ('quad','glow'),('trail_vertex','trail_fragment')]:
             with self.subTest(program=fragment):
                 handles=[];program=None

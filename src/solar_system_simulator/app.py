@@ -37,13 +37,13 @@ def main(argv=None):
             if '<svg' not in root.joinpath('assets/nasa-logo.svg').read_text():
                 raise ValueError('Invalid NASA logo')
             for name in ('quad', 'sphere_vertex', 'body', 'background_vertex', 'background',
-                         'glow', 'trail_vertex', 'trail_fragment'):
+                         'atmosphere', 'glow', 'trail_vertex', 'trail_fragment'):
                 if not root.joinpath(f'rendering/{name}.glsl').read_text().startswith('#version'):
                     raise ValueError(f'Invalid shader: {name}')
         except (ImportError, OSError, ValueError, KeyError) as exc:
             print(f'Asset check failed: {exc}', file=sys.stderr)
             return 1
-        print('Verified thirteen planet/environment maps, application icon, NASA logo, and eight shaders.')
+        print('Verified thirteen planet/environment maps, application icon, NASA logo, and nine shaders.')
         return 0
     if args.headless:
         if not args.epoch:

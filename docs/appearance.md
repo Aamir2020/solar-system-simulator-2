@@ -44,3 +44,9 @@ The **Enhanced** visibility mode uses that floor and allows enlarged display
 radii. **Realistic** visibility removes the brightness floor and always uses
 physical body radii, so a planet can become too faint to see. Both modes use the
 same calculated reflected-light brightness and point-to-texture transition.
+
+When effects are enabled, resolved views of Venus, Earth, and Mars add a separate
+sunlit atmospheric shell. Its limb is strongest at the horizon and fades toward
+the centre and night side. Shell thickness is slightly exaggerated so the thin
+edge remains visible at normal screen resolutions; it never changes body size or
+simulation state.
