@@ -190,6 +190,32 @@ class TextureRenderingTests(unittest.TestCase):
         self.assertGreater(nearly_full, quarter*1.15)
         self.assertGreater(quarter, 0)
 
+    def test_realistic_visibility_removes_dim_planet_floor_but_not_sunlight(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        camera.top_down()
+        camera.span = 2000*AU
+        positions = np.tile([10000*AU, 10000*AU, 0.], (len(BODIES), 1))
+        positions[0] = 0
+        positions[3] = [700*AU, 0, 0]
+        background = self.draw(camera, None, effects=False, stars=False)
+        enhanced = self.draw(camera, positions, physical=True, visibility='enhanced',
+                             effects=False, stars=False)
+        realistic = self.draw(camera, positions, physical=True, visibility='realistic',
+                              effects=False, stars=False)
+        points = camera.to_screen(positions[[0, 3]], 160, 160)
+
+        def flux(image, point, radius):
+            x, y = round(point[0]), round(160-point[1])
+            difference = np.maximum(image[:, :, :3].astype(int)-background[:, :, :3], 0)
+            return difference[y-radius:y+radius+1, x-radius:x+radius+1].sum()
+
+        self.assertEqual(flux(enhanced, points[0], 8), flux(realistic, points[0], 8))
+        self.assertGreater(flux(enhanced, points[1], 4), flux(realistic, points[1], 4)*3)
+
     def test_unresolved_planet_is_hidden_behind_resolved_sphere(self):
         import numpy as np
 

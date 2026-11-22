@@ -50,10 +50,14 @@ class AppearanceTests(unittest.TestCase):
 
     def test_display_compression_preserves_solar_dominance_and_visibility(self):
         positions = self.positions()
-        levels = point_brightness(positions, [2000*AU, 0, 0])
-        self.assertEqual(levels[0], 1.)
-        self.assertTrue(np.all(levels[1:] >= MINIMUM_POINT_BRIGHTNESS))
-        self.assertTrue(np.all(levels[1:] <= MAXIMUM_PLANET_BRIGHTNESS))
+        enhanced = point_brightness(positions, [2000*AU, 0, 0])
+        realistic = point_brightness(positions, [2000*AU, 0, 0], enhanced=False)
+        self.assertEqual(enhanced[0], 1.)
+        self.assertEqual(realistic[0], 1.)
+        self.assertTrue(np.all(enhanced[1:] >= MINIMUM_POINT_BRIGHTNESS))
+        self.assertTrue(np.all(enhanced[1:] <= MAXIMUM_PLANET_BRIGHTNESS))
+        self.assertTrue(np.all(realistic[1:] < MINIMUM_POINT_BRIGHTNESS))
+        self.assertTrue(np.all(realistic[1:] < enhanced[1:]))
 
 
 if __name__ == '__main__':

@@ -39,3 +39,8 @@ from the Sun, inverse-square distance from the camera, and a [Lambert phase
 function](https://ntrs.nasa.gov/api/citations/20240007032/downloads/Nemati%20Stahl%20HWO%20EB%20Roman%20Lessons%20Final%20SPIE.pdf).
 The large physical range is compressed for an ordinary display. A small floor
 keeps every planet selectable, and the Sun remains the white exposure reference.
+
+The **Enhanced** visibility mode uses that floor and allows enlarged display
+radii. **Realistic** visibility removes the brightness floor and always uses
+physical body radii, so a planet can become too faint to see. Both modes use the
+same calculated reflected-light brightness and point-to-texture transition.

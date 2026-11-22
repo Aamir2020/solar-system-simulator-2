@@ -69,7 +69,7 @@ class SceneRenderer:
         self.resources.clear()
 
     def draw(self, camera, positions, width, height, *, physical=False, effects=True,
-             stars=True, sky_brightness=.45, history=None):
+             stars=True, sky_brightness=.45, history=None, visibility='enhanced'):
         ctx = self.ctx
         ctx.fbo.depth_mask = True
         ctx.clear(*rgb(COLORS['space']), 1., depth=1.)
@@ -94,8 +94,9 @@ class SceneRenderer:
         self.background_vao.render()
         if positions is None:
             return
-        layout = body_layout(camera, positions, width, height, physical)
-        brightness = point_brightness(positions, camera.eye)
+        layout = body_layout(camera, positions, width, height,
+                             physical or visibility == 'realistic')
+        brightness = point_brightness(positions, camera.eye, enhanced=visibility == 'enhanced')
         centers = camera.to_view(positions)/camera.distance
         far = max(100., float(np.linalg.norm(centers, axis=1).max())*2 + 2)
         if history is not None and len(history):

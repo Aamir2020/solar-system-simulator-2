@@ -195,6 +195,18 @@ class DesktopTests(unittest.TestCase):
                 self.assertLess(window.view.camera.pitch, np.pi/2)
                 window.sky_slider.setValue(70)
                 self.assertEqual(window.view.sky_brightness, .7)
+                self.assertEqual(window.visibility_choice.currentData(), 'enhanced')
+                self.assertFalse(window.view.effective_physical)
+                window.visibility_choice.setCurrentIndex(
+                    window.visibility_choice.findData('realistic'))
+                self.assertEqual(window.view.visibility, 'realistic')
+                self.assertTrue(window.view.effective_physical)
+                self.assertFalse(window.toggles['physical'].isEnabled())
+                window.visibility_choice.setCurrentIndex(
+                    window.visibility_choice.findData('enhanced'))
+                self.assertEqual(window.view.visibility, 'enhanced')
+                self.assertFalse(window.view.effective_physical)
+                self.assertTrue(window.toggles['physical'].isEnabled())
                 self.assertIsNone(window.view.error)
                 window.view.set_follow(False)
                 window.body_list.setCurrentRow(4)

@@ -182,6 +182,13 @@ class MainWindow(QMainWindow):
             check.toggled.connect(lambda value, attr=attribute: setattr(self.view,attr,value))
             self.toggles[attribute] = check
             column.addWidget(check)
+        column.addWidget(label('Object visibility', 'muted'))
+        self.visibility_choice = QComboBox()
+        self.visibility_choice.addItem('Enhanced', 'enhanced')
+        self.visibility_choice.addItem('Realistic', 'realistic')
+        self.visibility_choice.setAccessibleName('Object visibility mode')
+        self.visibility_choice.currentIndexChanged.connect(self._visibility_changed)
+        column.addWidget(self.visibility_choice)
         column.addWidget(label('Sky brightness', 'muted'))
         self.sky_slider = QSlider(Qt.Orientation.Horizontal)
         self.sky_slider.setRange(0,100)
@@ -311,6 +318,10 @@ class MainWindow(QMainWindow):
             check.setChecked(value)
         self.trail_slider.setValue(self.settings.value('display/trail_length',800,type=int))
         self.sky_slider.setValue(self.settings.value('display/sky_brightness',45,type=int))
+        visibility = self.settings.value('display/visibility', 'enhanced')
+        index = self.visibility_choice.findData(visibility)
+        self.visibility_choice.setCurrentIndex(max(index, 0))
+        self._visibility_changed()
         geometry = self.settings.value('window/geometry')
         if geometry is not None:
             self.restoreGeometry(geometry)
@@ -318,6 +329,14 @@ class MainWindow(QMainWindow):
     def _filter_bodies(self, text):
         for i,body in enumerate(BODIES):
             self.body_list.item(i).setHidden(text.casefold() not in body.name.casefold())
+
+    def _visibility_changed(self):
+        self.view.visibility = self.visibility_choice.currentData() or 'enhanced'
+        physical = self.toggles['physical']
+        realistic = self.view.visibility == 'realistic'
+        physical.setEnabled(not realistic)
+        physical.setToolTip('Realistic visibility always uses physical radii.' if realistic else '')
+        self.view.update()
 
     def _select_from_list(self, index):
         if index >= 0:
@@ -515,7 +534,9 @@ class MainWindow(QMainWindow):
         try:
             metadata = {'source':self.scenario.source,'initial_epoch_tdb':self.scenario.epoch,
                         'simulation_seconds':self.view.snapshot.elapsed if self.view.snapshot else 0,
-                        'frame':self.scenario.frame,'exaggerated_radii':not self.view.physical,
+                        'frame':self.scenario.frame,
+                        'visibility_mode':self.view.visibility,
+                        'exaggerated_radii':not self.view.effective_physical,
                         'camera': {'target_m':self.view.camera.center.tolist(),
                                    'eye_m':self.view.camera.eye.tolist(),
                                    'span_m':self.view.camera.span,
@@ -540,7 +561,8 @@ class MainWindow(QMainWindow):
             'The default timestep is one hour. Larger steps trade accuracy for speed.\n\n'
             'NASA initializes the state; subsequent motion is integrated locally. '
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
-            'Trails show simulated history. Default radii are exaggerated.\n\n'
+            'Trails show simulated history. Enhanced visibility keeps dim planets discoverable; '
+            'Realistic visibility removes the brightness floor and uses physical radii.\n\n'
             'IMAGE CREDITS\nPlanet, Sun, Earth cloud/night, Saturn ring and Milky Way sky maps: '
             'Solar System Scope / INOVE. Unmodified source images, CC BY 4.0. '
             'https://www.solarsystemscope.com/textures/\n'
@@ -559,5 +581,6 @@ class MainWindow(QMainWindow):
             self.settings.setValue(f'display/{name}',check.isChecked())
         self.settings.setValue('display/trail_length',self.trail_slider.value())
         self.settings.setValue('display/sky_brightness',self.sky_slider.value())
+        self.settings.setValue('display/visibility',self.view.visibility)
         self.settings.setValue('window/geometry',self.saveGeometry())
         super().closeEvent(event)

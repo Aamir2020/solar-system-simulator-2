@@ -36,6 +36,7 @@ class Viewport(QOpenGLWidget):
         self.hover = None
         self.labels = self.trails = self.stars = self.effects = True
         self.physical = False
+        self.visibility = 'enhanced'
         self.trail_length = 800
         self.paused = True
         self.last_frame = monotonic()
@@ -54,6 +55,10 @@ class Viewport(QOpenGLWidget):
         self.text_overlay.setGeometry(self.rect())
         self.setAccessibleName("Solar system viewport")
         self.setAccessibleDescription("Scroll to zoom; drag to orbit; middle drag or Shift-drag to pan; double click to follow.")
+
+    @property
+    def effective_physical(self):
+        return self.physical or self.visibility == 'realistic'
 
     def initializeGL(self):
         try:
@@ -188,12 +193,14 @@ class Viewport(QOpenGLWidget):
         history = None
         if self.trails and self.snapshot is not None and self.positions is not None:
             history = trail_history(self.snapshot, self.render_elapsed, self.positions, self.trail_length)
-        self.renderer.draw(self.camera, self.positions, w, h, physical=self.physical,
+        self.renderer.draw(self.camera, self.positions, w, h, physical=self.effective_physical,
                            effects=self.effects, stars=self.stars,
-                           sky_brightness=self.sky_brightness, history=history)
+                           sky_brightness=self.sky_brightness, history=history,
+                           visibility=self.visibility)
 
     def _layout(self):
-        return body_layout(self.camera, self.positions, self.width(), self.height(), self.physical)
+        return body_layout(self.camera, self.positions, self.width(), self.height(),
+                           self.effective_physical)
 
     def _draw_overlay(self, painter):
         w, h = self.width(), self.height()
@@ -235,8 +242,10 @@ class Viewport(QOpenGLWidget):
         painter.drawText(22, 30, 'SOLAR SYSTEM SIMULATOR')
         if self.snapshot is not None and not self.paused:
             painter.drawText(22, 50, f'Achieved {self.snapshot.achieved_rate / 86400:,.1f} simulated days / second')
-        mode = 'Physical radii' if self.physical else 'Enlarged planet radii'
-        mode = ('Top-down view' if abs(self.camera.pitch-math.pi/2) < 1e-6 else '3D view') + ' · ' + mode
+        radii = 'Physical radii' if self.effective_physical else 'Enlarged planet radii'
+        visibility = 'Realistic visibility' if self.visibility == 'realistic' else 'Enhanced visibility'
+        mode = ('Top-down view' if abs(self.camera.pitch-math.pi/2) < 1e-6 else '3D view')
+        mode += ' · ' + visibility + ' · ' + radii
         painter.drawText(22, h-22, mode)
         # A useful physical scale independent of viewport aspect ratio.
         desired = self.camera.span / h * 110 / AU

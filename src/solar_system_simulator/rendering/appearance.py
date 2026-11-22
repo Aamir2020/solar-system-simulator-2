@@ -67,9 +67,10 @@ def reflected_fluxes(positions, observer):
             (AU/sun_distances)**2 * (AU/observer_distances)**2 * phase)
 
 
-def point_brightness(positions, observer):
-    """Compress physical flux for display while keeping every selectable body visible."""
+def point_brightness(positions, observer, enhanced=True):
+    """Tone-map physical flux, optionally retaining a navigation visibility floor."""
     levels = np.ones(len(BODIES))
+    minimum = MINIMUM_POINT_BRIGHTNESS if enhanced else 0.
     levels[1:] = np.clip(reflected_fluxes(positions, observer)**.25,
-                         MINIMUM_POINT_BRIGHTNESS, MAXIMUM_PLANET_BRIGHTNESS)
+                         minimum, MAXIMUM_PLANET_BRIGHTNESS)
     return levels
