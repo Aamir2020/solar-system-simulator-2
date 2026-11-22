@@ -1,9 +1,11 @@
 # Distant planets and sunlight
 
 As you move away, textured planets shrink and blend into small points of light.
-The Sun becomes a larger, brighter white point. Zooming back in restores the
-textured surfaces and Saturn's rings. Points still appear with lighting effects
-turned off and with physical planet radii enabled.
+The Sun becomes a larger, brighter white point. The transition uses the body's
+physical angular size, so enlarged display radii cannot reveal a texture from far
+away. Zooming close enough to resolve a body restores its textured surface and
+Saturn's rings. Points still appear with lighting effects turned off and with
+physical planet radii enabled.
 
 The point colors are approximate sRGB display choices, not measured color values:
 

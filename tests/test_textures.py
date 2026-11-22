@@ -133,6 +133,34 @@ class TextureRenderingTests(unittest.TestCase):
                 self.assertGreater(area[0], max(area[1:]))
                 self.assertTrue(np.all(image[:, :, 3] == 255))
 
+    def test_sun_is_a_white_point_at_system_scale_and_textured_only_when_focused(self):
+        import numpy as np
+
+        from scripts.benchmark_physics import load_scenario
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        from solar_system_simulator.rendering.scene import body_layout
+        state = load_scenario().state
+        camera = Camera()
+        camera.top_down()
+        camera.center = state.positions[0].copy()
+        camera.span = 5*AU
+        system_layout = body_layout(camera, state.positions, 160, 160)
+        self.assertEqual(system_layout.point_weights[0], 1)
+        system = self.draw(camera, state.positions, effects=False, stars=False)
+        background = self.draw(camera, None, effects=False, stars=False)
+        difference = system[:, :, :3].astype(int)-background[:, :, :3].astype(int)
+        center = difference[74:86, 74:86]
+        channels = center.reshape(-1, 3).sum(axis=0)
+        self.assertLess(channels.max()-channels.min(), channels.max()*.08)
+
+        camera.span = BODIES[0].radius*4
+        focused_layout = body_layout(camera, state.positions, 160, 160)
+        self.assertEqual(focused_layout.point_weights[0], 0)
+        focused = self.draw(camera, state.positions, effects=False, stars=False)
+        colors = np.unique(focused[50:110, 50:110, :3].reshape(-1, 3), axis=0)
+        self.assertGreater(len(colors), 100)
+
     def test_unresolved_planet_is_hidden_behind_resolved_sphere(self):
         import numpy as np
 

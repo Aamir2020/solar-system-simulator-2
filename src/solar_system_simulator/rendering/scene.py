@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..data.catalog import BODIES
-from .appearance import POINT_RADII, apparent_radii
+from .appearance import POINT_RADII, apparent_radii, point_weights
 
 
 @dataclass
@@ -23,14 +23,15 @@ class BodyLayout:
 def body_layout(camera, positions, width, height, physical=False):
     points, depths = camera.project(positions, width, height)
     focal = height / (2*math.tan(camera.fov / 2))
-    radii = np.array([body.radius for body in BODIES])
-    radii = apparent_radii(radii, depths, focal, physical)
+    physical_radii = np.array([body.radius for body in BODIES])
+    physical_projected = focal*physical_radii/np.sqrt(
+        np.maximum(depths**2-physical_radii**2, 1.))
+    radii = apparent_radii(physical_radii, depths, focal, physical)
     projected = focal*radii/np.sqrt(np.maximum(depths**2 - radii**2, 1.))
     projected = np.minimum(projected, 4*max(width, height))
-    transition = np.clip((projected - 2)/4, 0, 1)
-    point_weights = 1 - transition**2*(3 - 2*transition)
+    weights = point_weights(physical_projected)
     light_radii = np.maximum(POINT_RADII, projected*.8)
-    screen_radii = np.maximum(projected, light_radii*point_weights)
+    screen_radii = np.maximum(projected*(1-weights), light_radii*weights)
     visible = (depths > radii) & np.isfinite(points).all(axis=1)
     for far in range(len(BODIES)):
         if not visible[far]:
@@ -42,7 +43,7 @@ def body_layout(camera, positions, width, height, physical=False):
                 visible[far] = False
                 break
     return BodyLayout(points, depths, radii, screen_radii, visible,
-                      projected, point_weights, light_radii)
+                      projected, weights, light_radii)
 
 
 def trail_history(snapshot, elapsed, positions, limit):

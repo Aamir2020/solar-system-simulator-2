@@ -10,6 +10,19 @@ from solar_system_simulator.rendering.scene import body_layout, pick_sphere
 
 
 class Scene3DTests(unittest.TestCase):
+    def test_bodies_stay_as_points_until_camera_focus_resolves_their_surfaces(self):
+        camera = Camera()
+        camera.top_down()
+        positions = np.zeros((len(BODIES), 3))
+        camera.span = 5*AU
+        system = body_layout(camera, positions, 1200, 800)
+        np.testing.assert_array_equal(system.point_weights, np.ones(len(BODIES)))
+        for index, body in enumerate(BODIES):
+            with self.subTest(body=body.name):
+                camera.span = max(body.radius*4, .0001*AU)
+                focused = body_layout(camera, positions, 1200, 800)
+                self.assertEqual(focused.point_weights[index], 0)
+
     def test_zoom_shrinks_discs_into_points_and_sun_remains_largest_light(self):
         camera = Camera()
         camera.top_down()
