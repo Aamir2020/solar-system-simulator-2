@@ -8,7 +8,7 @@ import numpy as np
 from ..data.catalog import BODIES
 from ..theme import COLORS
 from .appearance import ATMOSPHERES, POINT_COLORS, point_brightness
-from .geometry import axial_rotation, ring_mesh, sphere_mesh
+from .geometry import axial_rotation, earth_cloud_offset, ring_mesh, sphere_mesh
 from .scene import body_layout, orbit_trail, trail_vertices
 from .textures import load_texture
 
@@ -77,7 +77,7 @@ class SceneRenderer:
         self.resources.clear()
 
     def draw(self, camera, positions, width, height, *, physical=False, effects=True,
-             stars=True, sky_brightness=.45, history=None, visibility='enhanced'):
+             stars=True, sky_brightness=.45, history=None, visibility='enhanced', elapsed=0.):
         ctx = self.ctx
         ctx.fbo.depth_mask = True
         ctx.clear(*rgb(COLORS['space']), 1., depth=1.)
@@ -115,13 +115,14 @@ class SceneRenderer:
         program['focal'].value = focal
         program['log_far'].value = log_far
         program['effects'].value = effects
+        program['cloud_offset'].value = earth_cloud_offset(elapsed)
         self.night.use(1)
         self.clouds.use(2)
         ctx.enable(moderngl.DEPTH_TEST)
         ctx.depth_func = '<='
 
         def body_uniforms(index, kind):
-            rotation = axial_rotation(index)
+            rotation = axial_rotation(index, elapsed)
             program['center'].value = tuple(centers[index])
             program['radius'].value = float(layout.world_radii[index]/camera.distance)
             program['rotation'].write((camera.view_rotation @ rotation).T.astype('f4').tobytes())
@@ -150,7 +151,7 @@ class SceneRenderer:
                 opacity = float(1 - layout.point_weights[index])
                 if not opacity or not layout.visible[index]:
                     continue
-                rotation = axial_rotation(index)
+                rotation = axial_rotation(index, elapsed)
                 atmosphere['center'].value = tuple(centers[index])
                 atmosphere['radius'].value = float(
                     layout.world_radii[index] / camera.distance * scale)

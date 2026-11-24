@@ -50,3 +50,11 @@ sunlit atmospheric shell. Its limb is strongest at the horizon and fades toward
 the centre and night side. Shell thickness is slightly exaggerated so the thin
 edge remains visible at normal screen resolutions; it never changes body size or
 simulation state.
+
+Resolved surfaces rotate from elapsed simulation time using [JPL sidereal
+periods](https://ssd.jpl.nasa.gov/planets/phys_par.html); Venus and Uranus rotate
+retrograde. The Sun uses [NASA's adopted 25.38-day period at 16 degrees
+latitude](https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html). Axial
+tilts and the initial prime-meridian phase remain illustrative because the image
+maps are not attitude ephemerides. Earth's static cloud image drifts slightly
+faster than its surface as a visual layer, not as a weather simulation.

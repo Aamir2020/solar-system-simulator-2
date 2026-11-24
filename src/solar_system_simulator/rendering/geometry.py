@@ -1,5 +1,21 @@
-"""Indexed sphere and annulus meshes with equirectangular surface coordinates."""
+"""Meshes and deterministic body orientation from elapsed simulation time."""
 import numpy as np
+
+from ..data.catalog import DAY
+
+# The Sun uses NASA's adopted period at 16 degrees latitude. Planet values are
+# signed JPL sidereal periods; retrograde direction is represented by the two
+# rotation axes whose obliquity exceeds 90 degrees.
+# https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html
+# https://ssd.jpl.nasa.gov/planets/phys_par.html
+SIDEREAL_ROTATION_DAYS = np.array([
+    25.38, 58.6462, -243.018, .99726968, 1.02595676,
+    .41354, .44401, -.71833, .67125,
+])
+AXIAL_TILTS_DEGREES = np.array([7.25, .03, 177.4, 23.4, 25.2, 3.1, 26.7, 97.8, 28.3])
+# A small illustrative eastward drift separates the static cloud map from the
+# surface. Weather is not modeled; this only avoids clouds being painted to land.
+EARTH_CLOUD_ROTATION_DAYS = abs(SIDEREAL_ROTATION_DAYS[3]) * .96
 
 
 def sphere_mesh(longitudes=128, latitudes=64):
@@ -24,9 +40,20 @@ def ring_mesh(segments=256, inner=1.24, outer=2.32):
     return np.array(vertices, dtype='f4'), indices.astype('u4')
 
 
-def axial_rotation(index):
-    # Illustrative fixed axes, not NASA attitude/rotation ephemerides.
-    tilts = [7.25, .03, 177.4, 23.4, 25.2, 3.1, 26.7, 97.8, 28.3]
-    tilt = np.radians(tilts[index])
-    return np.array([[1, 0, 0], [0, np.cos(tilt), np.sin(tilt)],
-                     [0, -np.sin(tilt), np.cos(tilt)]])
+def axial_rotation(index, elapsed=0.):
+    """Return illustrative axis tilt plus physical sidereal spin at ``elapsed``."""
+    tilt = np.radians(AXIAL_TILTS_DEGREES[index])
+    period = abs(SIDEREAL_ROTATION_DAYS[index]) * DAY
+    angle = np.remainder(2*np.pi*elapsed/period, 2*np.pi)
+    ct, st = np.cos(tilt), np.sin(tilt)
+    ca, sa = np.cos(angle), np.sin(angle)
+    tilt_rotation = np.array([[1, 0, 0], [0, ct, st], [0, -st, ct]])
+    spin_rotation = np.array([[ca, -sa, 0], [sa, ca, 0], [0, 0, 1]])
+    return tilt_rotation @ spin_rotation
+
+
+def earth_cloud_offset(elapsed):
+    """Return cloud-map revolutions ahead of Earth's surface, wrapped for precision."""
+    surface_period = abs(SIDEREAL_ROTATION_DAYS[3]) * DAY
+    cloud_period = EARTH_CLOUD_ROTATION_DAYS * DAY
+    return float(np.remainder(elapsed/cloud_period - elapsed/surface_period, 1.))

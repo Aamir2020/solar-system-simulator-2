@@ -13,6 +13,7 @@ uniform vec3 light_dir;
 uniform vec3 light_local;
 uniform float log_far;
 uniform float opacity;
+uniform float cloud_offset;
 void main() {
     if (view_pos.z <= 0.) discard;
     vec4 sample_color = texture(surface_map, uv);
@@ -34,7 +35,8 @@ void main() {
         float diffuse = effects ? .018 + 1.15*max(sun, 0.) : .6 + .4*max(dot(n, v), 0.);
         float cloud = 0.;
         if (kind == 3 && effects) {
-            cloud = pow(texture(cloud_map, uv).r, 1.5) * .72;
+            vec2 cloud_uv = vec2(fract(uv.x - cloud_offset), uv.y);
+            cloud = pow(texture(cloud_map, cloud_uv).r, 1.5) * .72;
             base = mix(base, vec3(.88), cloud);
         }
         color = base * diffuse;

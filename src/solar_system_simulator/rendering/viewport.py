@@ -196,7 +196,7 @@ class Viewport(QOpenGLWidget):
         self.renderer.draw(self.camera, self.positions, w, h, physical=self.effective_physical,
                            effects=self.effects, stars=self.stars,
                            sky_brightness=self.sky_brightness, history=history,
-                           visibility=self.visibility)
+                           visibility=self.visibility, elapsed=self.render_elapsed)
 
     def _layout(self):
         return body_layout(self.camera, self.positions, self.width(), self.height(),

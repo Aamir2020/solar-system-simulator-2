@@ -557,7 +557,8 @@ class MainWindow(QMainWindow):
             'SIMULATION\nSpace: play/pause · N: one step · R: restart\nCtrl+S: screenshot · F1: help\n\n'
             'SCIENCE\nNewtonian pairwise gravity and kick–drift–kick leapfrog. '
             'Three-dimensional physics and perspective rendering; '
-            'no moons, collisions, relativity, or simulated planet rotation. '
+            'no moons, collisions, or relativity. Planet textures rotate from elapsed '
+            'simulation time using sidereal periods. '
             'The default timestep is one hour. Larger steps trade accuracy for speed.\n\n'
             'NASA initializes the state; subsequent motion is integrated locally. '
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
@@ -568,7 +569,7 @@ class MainWindow(QMainWindow):
             'https://www.solarsystemscope.com/textures/\n'
             'https://creativecommons.org/licenses/by/4.0/\n'
             'Maps include enhanced colors and filled unmapped regions. '
-            'Body axes are illustrative fixed orientations. The sky is a visual backdrop, '
+            'Body axes and initial texture phases are illustrative. The sky is a visual backdrop, '
             'not a calibrated star-chart overlay.\n\n'
             'High playback rates may be limited by available compute. The numerical timestep '
             'does not change automatically. Arbitrary reverse playback is not implemented.')

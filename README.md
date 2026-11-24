@@ -42,7 +42,7 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead.
 - Press **T** for the top-down view or **V** for the 3D view.
 - Press **Ctrl+S** to save a screenshot.
 
-Planet sizes are enlarged by default. Physics and graphics run in 3D. NASA provides the starting positions and velocities; Python calculates the motion after that. Moons, collisions, and relativity are not included. Body axes are illustrative, and the skybox is a visual backdrop.
+Planet sizes are enlarged by default. Physics and graphics run in 3D. NASA provides the starting positions and velocities; Python calculates the motion after that. Moons, collisions, and relativity are not included. Body axes are illustrative, while surfaces rotate at their sidereal periods. The skybox is a visual backdrop.
 
 Earth has cloud and night-light maps. Earth, Venus, and Mars have sunlit atmospheric
 limbs, and Saturn has textured 3D rings. Adjust sky brightness in the right panel.

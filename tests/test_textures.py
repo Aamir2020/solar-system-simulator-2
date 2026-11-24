@@ -85,6 +85,34 @@ class TextureRenderingTests(unittest.TestCase):
         other_hemisphere = self.draw(camera, state.positions, physical=True, effects=False, stars=False)
         self.assertFalse(np.array_equal(images[0], other_hemisphere))
 
+    def test_planet_texture_rotation_uses_simulation_time_and_repeats_each_period(self):
+        import numpy as np
+
+        from scripts.benchmark_physics import load_scenario
+        from solar_system_simulator.data.catalog import DAY
+        from solar_system_simulator.rendering.camera import Camera
+        from solar_system_simulator.rendering.geometry import SIDEREAL_ROTATION_DAYS
+        state = load_scenario().state
+        original = state.positions.copy()
+        camera = Camera()
+        index = 3
+        camera.center = state.positions[index].copy()
+        camera.span = BODIES[index].radius*4
+        options = {'physical': True, 'effects': False, 'stars': False}
+        period = abs(SIDEREAL_ROTATION_DAYS[index])*DAY
+        initial = self.draw(camera, state.positions, elapsed=0, **options)
+        quarter = self.draw(camera, state.positions, elapsed=period/4, **options)
+        complete = self.draw(camera, state.positions, elapsed=period, **options)
+        self.assertFalse(np.array_equal(initial, quarter))
+        self.assertLessEqual(np.abs(initial.astype(int)-complete.astype(int)).max(), 1)
+        clouds_initial = self.draw(camera, state.positions, elapsed=0,
+                                   physical=True, effects=True, stars=False)
+        clouds_complete = self.draw(camera, state.positions, elapsed=period,
+                                    physical=True, effects=True, stars=False)
+        changed = np.any(clouds_initial[:, :, :3] != clouds_complete[:, :, :3], axis=-1)
+        self.assertGreater(np.count_nonzero(changed), 100)
+        np.testing.assert_array_equal(state.positions, original)
+
     def test_terrestrial_atmospheres_add_opaque_sunlit_limbs(self):
         import numpy as np
 

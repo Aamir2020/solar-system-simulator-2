@@ -3,13 +3,42 @@ import unittest
 
 import numpy as np
 
-from solar_system_simulator.data.catalog import AU, BODIES
+from solar_system_simulator.data.catalog import AU, BODIES, DAY
 from solar_system_simulator.rendering.camera import Camera
-from solar_system_simulator.rendering.geometry import ring_mesh, sphere_mesh
+from solar_system_simulator.rendering.geometry import (
+    EARTH_CLOUD_ROTATION_DAYS,
+    SIDEREAL_ROTATION_DAYS,
+    axial_rotation,
+    earth_cloud_offset,
+    ring_mesh,
+    sphere_mesh,
+)
 from solar_system_simulator.rendering.scene import body_layout, pick_sphere
 
 
 class Scene3DTests(unittest.TestCase):
+    def test_sidereal_rotation_is_elapsed_time_based_periodic_and_retrograde(self):
+        for index, period in enumerate(SIDEREAL_ROTATION_DAYS):
+            with self.subTest(body=BODIES[index].name):
+                initial = axial_rotation(index, 0)
+                complete = axial_rotation(index, abs(period)*DAY)
+                np.testing.assert_allclose(complete, initial, atol=2e-15)
+                np.testing.assert_allclose(initial @ initial.T, np.eye(3), atol=1e-15)
+        local_equator = np.array([1., 0., 0.])
+        earth = axial_rotation(3, abs(SIDEREAL_ROTATION_DAYS[3])*DAY/4) @ local_equator
+        venus = axial_rotation(2, abs(SIDEREAL_ROTATION_DAYS[2])*DAY/4) @ local_equator
+        uranus = axial_rotation(7, abs(SIDEREAL_ROTATION_DAYS[7])*DAY/4) @ local_equator
+        self.assertGreater(earth[1], 0)
+        self.assertLess(venus[1], 0)
+        self.assertLess(uranus[1], 0)
+
+    def test_earth_clouds_drift_slightly_ahead_of_surface(self):
+        earth_day = abs(SIDEREAL_ROTATION_DAYS[3])
+        self.assertLess(EARTH_CLOUD_ROTATION_DAYS, earth_day)
+        self.assertEqual(earth_cloud_offset(0), 0)
+        self.assertGreater(earth_cloud_offset(earth_day*DAY), 0)
+        self.assertAlmostEqual(earth_cloud_offset(24*earth_day*DAY), 0)
+
     def test_bodies_stay_as_points_until_camera_focus_resolves_their_surfaces(self):
         camera = Camera()
         camera.top_down()
