@@ -38,6 +38,7 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead.
 - Double click a planet to focus on it.
 - Use the side panels to change the view, labels, trails, and planet sizes.
 - Choose **Enhanced** visibility to keep faint planets discoverable or **Realistic** visibility for physical radii with no minimum brightness.
+- Use automatic exposure to dim bright solar views, or adjust exposure compensation manually.
 - Press **Space** to pause, **H** to reset the camera, and **F1** for help.
 - Press **T** for the top-down view or **V** for the 3D view.
 - Press **Ctrl+S** to save a screenshot.

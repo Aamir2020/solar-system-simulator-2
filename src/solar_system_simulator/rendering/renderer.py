@@ -77,7 +77,8 @@ class SceneRenderer:
         self.resources.clear()
 
     def draw(self, camera, positions, width, height, *, physical=False, effects=True,
-             stars=True, sky_brightness=.45, history=None, visibility='enhanced', elapsed=0.):
+             stars=True, sky_brightness=.45, history=None, visibility='enhanced', elapsed=0.,
+             exposure=1.):
         ctx = self.ctx
         ctx.fbo.depth_mask = True
         ctx.clear(*rgb(COLORS['space']), 1., depth=1.)
@@ -98,6 +99,7 @@ class SceneRenderer:
         bg['background_color'].value = rgb(COLORS['space'])
         bg['stars'].value = stars
         bg['brightness'].value = sky_brightness
+        bg['exposure'].value = exposure
         self.sky.use(0)
         self.background_vao.render()
         if positions is None:
@@ -116,6 +118,7 @@ class SceneRenderer:
         program['log_far'].value = log_far
         program['effects'].value = effects
         program['cloud_offset'].value = earth_cloud_offset(elapsed)
+        program['exposure'].value = exposure
         self.night.use(1)
         self.clouds.use(2)
         ctx.enable(moderngl.DEPTH_TEST)
@@ -147,6 +150,7 @@ class SceneRenderer:
             atmosphere = self.atmosphere
             atmosphere['focal'].value = focal
             atmosphere['log_far'].value = log_far
+            atmosphere['exposure'].value = exposure
             for index, (color, scale, strength) in ATMOSPHERES.items():
                 opacity = float(1 - layout.point_weights[index])
                 if not opacity or not layout.visible[index]:
@@ -170,6 +174,7 @@ class SceneRenderer:
             self.trail['viewport'].value = (width, height)
             self.trail['focal'].value = focal
             self.trail['log_far'].value = log_far
+            self.trail['exposure'].value = exposure
             for index, body in enumerate(BODIES):
                 path = history[:, index]
                 if index:
@@ -187,6 +192,7 @@ class SceneRenderer:
         self.glow['viewport'].value = (width, height)
         self.glow['log_far'].value = log_far
         self.glow['effects'].value = effects
+        self.glow['exposure'].value = exposure
         # Composite distant points back-to-front, with depth testing against the
         # resolved bodies. The point pass also runs with decorative effects off.
         for index in np.argsort(layout.depths)[::-1]:

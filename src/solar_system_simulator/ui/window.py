@@ -176,7 +176,8 @@ class MainWindow(QMainWindow):
         self.toggles = {}
         for title, attribute in [('Body labels','labels'),('Orbit trails','trails'),
                                   ('Star skybox','stars'),('Lighting, clouds & rings','effects'),
-                                  ('Physical planet radii','physical')]:
+                                  ('Physical planet radii','physical'),
+                                  ('Auto exposure','auto_exposure')]:
             check = QCheckBox(title)
             check.setChecked(getattr(self.view,attribute))
             check.toggled.connect(lambda value, attr=attribute: setattr(self.view,attr,value))
@@ -196,6 +197,15 @@ class MainWindow(QMainWindow):
         self.sky_slider.setAccessibleName('Sky brightness')
         self.sky_slider.valueChanged.connect(lambda value: setattr(self.view, 'sky_brightness', value/100))
         column.addWidget(self.sky_slider)
+        self.exposure_label = label('Exposure compensation (+0.0 EV)', 'muted')
+        column.addWidget(self.exposure_label)
+        self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
+        self.exposure_slider.setRange(-30, 30)
+        self.exposure_slider.setValue(0)
+        self.exposure_slider.setAccessibleName('Exposure compensation')
+        self.exposure_slider.setToolTip('Adjust camera exposure from -3 to +3 stops.')
+        self.exposure_slider.valueChanged.connect(self._exposure_changed)
+        column.addWidget(self.exposure_slider)
         column.addWidget(label('Trail history (maximum 1,500 samples)', 'muted'))
         self.trail_slider = QSlider(Qt.Orientation.Horizontal)
         self.trail_slider.setRange(50,1500)
@@ -318,6 +328,8 @@ class MainWindow(QMainWindow):
             check.setChecked(value)
         self.trail_slider.setValue(self.settings.value('display/trail_length',800,type=int))
         self.sky_slider.setValue(self.settings.value('display/sky_brightness',45,type=int))
+        self.exposure_slider.setValue(
+            self.settings.value('display/exposure_compensation', 0, type=int))
         visibility = self.settings.value('display/visibility', 'enhanced')
         index = self.visibility_choice.findData(visibility)
         self.visibility_choice.setCurrentIndex(max(index, 0))
@@ -336,6 +348,11 @@ class MainWindow(QMainWindow):
         realistic = self.view.visibility == 'realistic'
         physical.setEnabled(not realistic)
         physical.setToolTip('Realistic visibility always uses physical radii.' if realistic else '')
+        self.view.update()
+
+    def _exposure_changed(self, value):
+        self.view.exposure_compensation = value/10
+        self.exposure_label.setText(f'Exposure compensation ({value/10:+.1f} EV)')
         self.view.update()
 
     def _select_from_list(self, index):
@@ -536,6 +553,9 @@ class MainWindow(QMainWindow):
                         'simulation_seconds':self.view.snapshot.elapsed if self.view.snapshot else 0,
                         'frame':self.scenario.frame,
                         'visibility_mode':self.view.visibility,
+                        'auto_exposure':self.view.auto_exposure,
+                        'exposure_ev':self.view.exposure_compensation,
+                        'exposure_multiplier':self.view.exposure,
                         'exaggerated_radii':not self.view.effective_physical,
                         'camera': {'target_m':self.view.camera.center.tolist(),
                                    'eye_m':self.view.camera.eye.tolist(),
@@ -564,6 +584,8 @@ class MainWindow(QMainWindow):
             'Dates are TDB calendar dates, not your local clock. Masses are local constants. '
             'Trails show simulated history. Enhanced visibility keeps dim planets discoverable; '
             'Realistic visibility removes the brightness floor and uses physical radii.\n\n'
+            'Auto exposure dims the sky near the Sun and brightens dark views. The exposure '
+            'slider adds or removes photographic stops in either automatic or manual mode.\n\n'
             'IMAGE CREDITS\nPlanet, Sun, Earth cloud/night, Saturn ring and Milky Way sky maps: '
             'Solar System Scope / INOVE. Unmodified source images, CC BY 4.0. '
             'https://www.solarsystemscope.com/textures/\n'
@@ -582,6 +604,7 @@ class MainWindow(QMainWindow):
             self.settings.setValue(f'display/{name}',check.isChecked())
         self.settings.setValue('display/trail_length',self.trail_slider.value())
         self.settings.setValue('display/sky_brightness',self.sky_slider.value())
+        self.settings.setValue('display/exposure_compensation', self.exposure_slider.value())
         self.settings.setValue('display/visibility',self.view.visibility)
         self.settings.setValue('window/geometry',self.saveGeometry())
         super().closeEvent(event)

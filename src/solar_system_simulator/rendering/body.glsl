@@ -14,6 +14,7 @@ uniform vec3 light_local;
 uniform float log_far;
 uniform float opacity;
 uniform float cloud_offset;
+uniform float exposure;
 void main() {
     if (view_pos.z <= 0.) discard;
     vec4 sample_color = texture(surface_map, uv);
@@ -51,6 +52,7 @@ void main() {
     }
     alpha *= opacity;
     if (alpha < .005) discard;
-    frag = vec4(pow(max(color, vec3(0)), vec3(1./2.2)), alpha);
+    color = 1. - exp(-max(color, vec3(0)) * exposure * 1.45);
+    frag = vec4(pow(color, vec3(1./2.2)), alpha);
     gl_FragDepth = log2(1. + view_pos.z) / log_far;
 }

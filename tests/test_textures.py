@@ -158,6 +158,31 @@ class TextureRenderingTests(unittest.TestCase):
         hidden = self.draw(camera, None, stars=False)
         self.assertGreater(np.count_nonzero(initial[:, :, :3] != hidden[:, :, :3]), 100)
 
+    def test_exposure_consistently_brightens_sky_and_distant_lights(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        dim_sky = self.draw(camera, None, sky_brightness=1., exposure=.2)
+        bright_sky = self.draw(camera, None, sky_brightness=1., exposure=2.)
+        self.assertGreater(bright_sky[:, :, :3].sum(), dim_sky[:, :, :3].sum()*1.5)
+
+        camera.top_down()
+        camera.span = 20*AU
+        positions = np.tile([100*AU, 100*AU, 0.], (len(BODIES), 1))
+        positions[0] = 0
+        dim_background = self.draw(camera, None, stars=False, exposure=.2)
+        bright_background = self.draw(camera, None, stars=False, exposure=2.)
+        dim = self.draw(camera, positions, stars=False, exposure=.2)
+        bright = self.draw(camera, positions, stars=False, exposure=2.)
+        dim_light = np.maximum(
+            dim[:, :, :3].astype(int)-dim_background[:, :, :3], 0).sum()
+        bright_light = np.maximum(
+            bright[:, :, :3].astype(int)-bright_background[:, :, :3], 0).sum()
+        self.assertGreater(bright_light, dim_light*1.5)
+        self.assertTrue(np.all(bright[:, :, 3] == 255))
+
     def test_distant_points_keep_colors_and_solar_dominance_with_effects_on_or_off(self):
         import numpy as np
 

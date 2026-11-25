@@ -8,6 +8,8 @@ from solar_system_simulator.rendering.appearance import (
     GEOMETRIC_ALBEDOS,
     MAXIMUM_PLANET_BRIGHTNESS,
     MINIMUM_POINT_BRIGHTNESS,
+    adapt_exposure,
+    exposure_target,
     lambert_phase,
     point_brightness,
     reflected_fluxes,
@@ -58,6 +60,35 @@ class AppearanceTests(unittest.TestCase):
         self.assertTrue(np.all(enhanced[1:] <= MAXIMUM_PLANET_BRIGHTNESS))
         self.assertTrue(np.all(realistic[1:] < MINIMUM_POINT_BRIGHTNESS))
         self.assertTrue(np.all(realistic[1:] < enhanced[1:]))
+
+    def test_auto_exposure_dims_visible_nearby_sun_and_brightens_dark_view(self):
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        positions = self.positions()
+        camera.center = positions[0].copy()
+        camera.span = BODIES[0].radius*4
+        near_sun = exposure_target(camera, positions, 1200, 800)
+        camera.center = positions[0]-camera.basis[2]*camera.distance*2
+        looking_away = exposure_target(camera, positions, 1200, 800)
+        self.assertLess(near_sun, .5)
+        self.assertGreater(looking_away, near_sun*3)
+        self.assertAlmostEqual(
+            exposure_target(camera, positions, 1200, 800, compensation=1),
+            looking_away*2)
+        self.assertEqual(exposure_target(camera, positions, 1200, 800, False, 0), 1.)
+
+    def test_exposure_adaptation_is_smooth_monotonic_and_frame_rate_independent(self):
+        results = []
+        for fps in (30, 60, 120):
+            value = 1.
+            samples = []
+            for _ in range(fps):
+                value = adapt_exposure(value, .1, 1/fps)
+                samples.append(value)
+            self.assertTrue(np.all(np.diff(samples) < 0))
+            self.assertGreater(value, .1)
+            results.append(value)
+        np.testing.assert_allclose(results, results[0], rtol=1e-14)
 
 
 if __name__ == '__main__':

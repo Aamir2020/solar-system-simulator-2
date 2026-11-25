@@ -58,3 +58,11 @@ latitude](https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html). Axial
 tilts and the initial prime-meridian phase remain illustrative because the image
 maps are not attitude ephemerides. Earth's static cloud image drifts slightly
 faster than its surface as a visual layer, not as a weather simulation.
+
+Automatic exposure responds to the Sun's apparent size and whether it is inside
+the camera view. It smoothly reduces exposure near the Sun and raises it when
+looking into dark space. The same exposure is applied to the sky, surfaces,
+atmospheres, trails, and unresolved lights with a soft highlight-compression
+curve. Exposure compensation is measured in photographic stops (EV), and the
+manual mode uses the compensation without automatic solar adjustment. Screenshot
+pixels and metadata preserve the exposure visible in the viewport.

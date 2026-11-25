@@ -9,6 +9,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from ..data.catalog import AU, BODIES
 from ..theme import COLORS
+from .appearance import adapt_exposure, exposure_target
 from .camera import Camera, pick_body
 from .labels import visible_labels
 from .overlay import TextOverlay
@@ -49,6 +50,10 @@ class Viewport(QOpenGLWidget):
         self.dragged = False
         self.renderer = None
         self.sky_brightness = .45
+        self.auto_exposure = True
+        self.exposure_compensation = 0.
+        self.exposure = 1.
+        self._freeze_frame = False
         self.drag_mode = None
         self._visible_labels = set()
         self.text_overlay = TextOverlay(self)
@@ -142,14 +147,20 @@ class Viewport(QOpenGLWidget):
 
     def paintGL(self):
         now = monotonic()
-        dt = now - self.last_frame
-        self.last_frame = now
-        self._interpolate(now)
-        target = self.positions[self.selection] if (
-            self.follow and self.selection is not None and self.positions is not None) else None
-        self.camera.animate(dt, target)
-        if self.positions is not None:
-            self.camera.keep_outside(self.positions, np.array([body.radius for body in BODIES]))
+        if not self._freeze_frame:
+            dt = now - self.last_frame
+            self.last_frame = now
+            self._interpolate(now)
+            target = self.positions[self.selection] if (
+                self.follow and self.selection is not None and self.positions is not None) else None
+            self.camera.animate(dt, target)
+            if self.positions is not None:
+                self.camera.keep_outside(self.positions,
+                                         np.array([body.radius for body in BODIES]))
+            target_exposure = exposure_target(
+                self.camera, self.positions, self.width(), self.height(),
+                self.auto_exposure, self.exposure_compensation)
+            self.exposure = adapt_exposure(self.exposure, target_exposure, dt)
         self.frames += 1
         if now - self.fps_time >= .5:
             self.fps = self.frames / (now - self.fps_time)
@@ -172,7 +183,12 @@ class Viewport(QOpenGLWidget):
 
     def capture_image(self):
         """Include raster labels when exporting the otherwise GL-only framebuffer."""
-        image = self.grabFramebuffer()
+        self._freeze_frame = True
+        try:
+            image = self.grabFramebuffer()
+        finally:
+            self._freeze_frame = False
+            self.last_frame = monotonic()
         if not image.isNull():
             image.setDevicePixelRatio(self.devicePixelRatioF())
             image.setDotsPerMeterX(round(self.logicalDpiX() / .0254))
@@ -196,7 +212,8 @@ class Viewport(QOpenGLWidget):
         self.renderer.draw(self.camera, self.positions, w, h, physical=self.effective_physical,
                            effects=self.effects, stars=self.stars,
                            sky_brightness=self.sky_brightness, history=history,
-                           visibility=self.visibility, elapsed=self.render_elapsed)
+                           visibility=self.visibility, elapsed=self.render_elapsed,
+                           exposure=self.exposure)
 
     def _layout(self):
         return body_layout(self.camera, self.positions, self.width(), self.height(),

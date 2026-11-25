@@ -29,6 +29,8 @@ TEXTURE_FADE_START = 6.
 TEXTURE_FADE_END = 16.
 MINIMUM_POINT_BRIGHTNESS = .08
 MAXIMUM_PLANET_BRIGHTNESS = .85
+MINIMUM_EXPOSURE = .04
+MAXIMUM_EXPOSURE = 4.
 
 
 def apparent_radii(physical_radii, depths, focal, physical=False):
@@ -81,3 +83,38 @@ def point_brightness(positions, observer, enhanced=True):
     levels[1:] = np.clip(reflected_fluxes(positions, observer)**.25,
                          minimum, MAXIMUM_PLANET_BRIGHTNESS)
     return levels
+
+
+def exposure_target(camera, positions, width, height, automatic=True, compensation=0.):
+    """Choose camera exposure from visible solar glare, then apply EV compensation."""
+    base = 1.
+    if automatic:
+        base = 1.4
+        if positions is not None:
+            to_sun = np.asarray(positions[0], dtype=float) - camera.eye
+            distance = max(float(np.linalg.norm(to_sun)), BODIES[0].radius*1.000001)
+            direction = to_sun/distance
+            separation = np.arccos(np.clip(np.dot(-camera.basis[2], direction), -1., 1.))
+            half_vertical = camera.fov/2
+            half_horizontal = np.arctan(np.tan(half_vertical)*width/max(height, 1))
+            half_diagonal = np.arctan(np.hypot(np.tan(half_vertical),
+                                               np.tan(half_horizontal)))
+            angular_radius = np.arcsin(np.clip(BODIES[0].radius/distance, 0., 1.))
+            edge = angular_radius + .12
+            visible = np.clip((half_diagonal+edge-separation)/edge, 0., 1.)
+            visible = visible**2*(3-2*visible)
+            focal = height/(2*np.tan(half_vertical))
+            projected = focal*BODIES[0].radius / np.sqrt(max(
+                distance**2-BODIES[0].radius**2, 1.))
+            glare = (projected/6)**.8
+            base /= 1 + visible*glare
+    return float(np.clip(base*2**compensation, MINIMUM_EXPOSURE, MAXIMUM_EXPOSURE))
+
+
+def adapt_exposure(current, target, dt):
+    """Smooth exposure in EV space, adapting to brightness faster than darkness."""
+    current = float(np.clip(current, MINIMUM_EXPOSURE, MAXIMUM_EXPOSURE))
+    target = float(np.clip(target, MINIMUM_EXPOSURE, MAXIMUM_EXPOSURE))
+    rate = 5. if target < current else 1.8
+    alpha = 1-np.exp(-max(0., min(float(dt), .1))*rate)
+    return float(np.exp(np.log(current)*(1-alpha) + np.log(target)*alpha))

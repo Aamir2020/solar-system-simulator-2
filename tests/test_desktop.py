@@ -195,6 +195,10 @@ class DesktopTests(unittest.TestCase):
                 self.assertLess(window.view.camera.pitch, np.pi/2)
                 window.sky_slider.setValue(70)
                 self.assertEqual(window.view.sky_brightness, .7)
+                self.assertTrue(window.toggles['auto_exposure'].isChecked())
+                window.exposure_slider.setValue(15)
+                self.assertEqual(window.view.exposure_compensation, 1.5)
+                self.assertIn('+1.5 EV', window.exposure_label.text())
                 self.assertEqual(window.visibility_choice.currentData(), 'enhanced')
                 self.assertFalse(window.view.effective_physical)
                 window.visibility_choice.setCurrentIndex(

@@ -7,6 +7,7 @@ uniform vec3 light_dir;
 uniform float strength;
 uniform float opacity;
 uniform float log_far;
+uniform float exposure;
 void main() {
     if (view_pos.z <= 0.) discard;
     vec3 n = normalize(normal);
@@ -16,6 +17,7 @@ void main() {
     float limb = pow(1. - facing, 2.2);
     float daylight = .18 + .82 * smoothstep(-.30, .45, dot(n, normalize(light_dir)));
     float alpha = limb * daylight * strength * opacity;
+    alpha = 1. - exp(-alpha * exposure * 1.45);
     if (alpha < .004) discard;
     frag = vec4(atmosphere_color, min(alpha, .85));
     gl_FragDepth = log2(1. + view_pos.z) / log_far;

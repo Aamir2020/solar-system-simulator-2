@@ -8,6 +8,7 @@ uniform vec3 camera_back;
 uniform vec2 field_of_view;
 uniform bool stars;
 uniform float brightness;
+uniform float exposure;
 uniform vec3 background_color;
 const float PI = 3.141592653589793;
 void main() {
@@ -20,5 +21,7 @@ void main() {
         vec2 coord = vec2(.5 - atan(direction.y, direction.x)/(2.*PI), .5 - asin(clamp(direction.z, -1., 1.))/PI);
         color += texture(sky_map, coord).rgb * brightness;
     }
-    frag = vec4(color, 1.);
+    vec3 linear = pow(max(color, vec3(0)), vec3(2.2));
+    linear = 1. - exp(-linear * exposure * 1.45);
+    frag = vec4(pow(linear, vec3(1./2.2)), 1.);
 }

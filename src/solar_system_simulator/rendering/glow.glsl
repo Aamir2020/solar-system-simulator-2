@@ -10,6 +10,7 @@ uniform float point_weight;
 uniform bool effects;
 uniform bool is_sun;
 uniform float brightness;
+uniform float exposure;
 void main() {
     float r = length(uv);
     float distance_px = r * extent;
@@ -21,6 +22,7 @@ void main() {
     }
     alpha *= 1. - smoothstep(.7, 1., r);
     alpha *= brightness;
+    alpha = 1. - exp(-alpha * exposure * 1.45);
     if (alpha < .002) discard;
     frag = vec4(light_color, min(alpha, 1.));
     gl_FragDepth = log2(1. + sun_depth) / log_far;
