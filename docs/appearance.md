@@ -66,3 +66,11 @@ atmospheres, trails, and unresolved lights with a soft highlight-compression
 curve. Exposure compensation is measured in photographic stops (EV), and the
 manual mode uses the compensation without automatic solar adjustment. Screenshot
 pixels and metadata preserve the exposure visible in the viewport.
+
+Cast shadows compare the apparent discs of the finite-size Sun and every
+intervening planet for each rendered fragment. Full overlap creates an umbra;
+partial overlap creates a smoothly varying penumbra, matching [NASA's eclipse
+geometry](https://science.nasa.gov/eclipses/geometry/). These shadows affect
+surfaces, Earth night lights, atmospheres, and Saturn's rings. Saturn's textured
+ring opacity also attenuates sunlight reaching the planet. Shadow calculations
+are visual only and never modify the N-body state.

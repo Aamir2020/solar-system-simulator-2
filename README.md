@@ -46,7 +46,8 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead.
 Planet sizes are enlarged by default. Physics and graphics run in 3D. NASA provides the starting positions and velocities; Python calculates the motion after that. Moons, collisions, and relativity are not included. Body axes are illustrative, while surfaces rotate at their sidereal periods. The skybox is a visual backdrop.
 
 Earth has cloud and night-light maps. Earth, Venus, and Mars have sunlit atmospheric
-limbs, and Saturn has textured 3D rings. Adjust sky brightness in the right panel.
+limbs. Planets cast finite-Sun eclipse shadows, and Saturn has textured 3D rings
+that cast and receive shadows. Adjust sky brightness in the right panel.
 
 Zoom out to see planets shrink into colored points of light. The Sun becomes the largest, brightest white point. See [distant-body colors](docs/appearance.md) for the sources and display choices.
 

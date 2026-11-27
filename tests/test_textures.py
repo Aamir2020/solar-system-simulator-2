@@ -183,6 +183,54 @@ class TextureRenderingTests(unittest.TestCase):
         self.assertGreater(bright_light, dim_light*1.5)
         self.assertTrue(np.all(bright[:, :, 3] == 255))
 
+    def test_finite_sun_casts_clear_partial_and_total_eclipse_shadows(self):
+        import numpy as np
+
+        from solar_system_simulator.data.catalog import AU
+        from solar_system_simulator.rendering.camera import Camera
+        camera = Camera()
+        camera.top_down()
+        target = 4  # Mars has no night map to mask the eclipse measurement.
+        camera.center = np.zeros(3)
+        camera.span = BODIES[target].radius*4
+        positions = np.tile([100*AU, 100*AU, 0.], (len(BODIES), 1))
+        positions[0] = [0, 0, AU]
+        positions[target] = 0
+        options = {'physical': True, 'effects': True, 'stars': False, 'exposure': 1.}
+
+        def surface_light(occluder_offset):
+            positions[5] = [occluder_offset, 0, .1*AU]
+            image = self.draw(camera, positions, **options)
+            return image[70:90, 70:90, :3].astype(float).sum()
+
+        clear = surface_light(3e8)
+        partial = surface_light(7e7)
+        total = surface_light(0)
+        self.assertGreater(clear, partial*1.1)
+        self.assertGreater(partial, total*1.1)
+
+    def test_saturn_ring_texture_casts_shadow_inside_planet_disc(self):
+        import numpy as np
+
+        from scripts.benchmark_physics import load_scenario
+        from solar_system_simulator.rendering.camera import Camera
+        from solar_system_simulator.rendering.scene import body_layout
+        state = load_scenario().state
+        camera = Camera()
+        camera.center = state.positions[6].copy()
+        camera.span = BODIES[6].radius*6
+        camera.orbit(80, -25)
+        options = {'physical': True, 'effects': True, 'stars': False, 'exposure': .8}
+        unshadowed = self.draw(camera, state.positions, shadows=False, **options)
+        shadowed = self.draw(camera, state.positions, shadows=True, **options)
+        layout = body_layout(camera, state.positions, 160, 160, physical=True)
+        x, y = layout.points[6]
+        rows, columns = np.mgrid[:160, :160]
+        inside = np.hypot(columns+.5-x, rows+.5-(160-y)) < layout.disc_radii[6]*.85
+        difference = unshadowed[:, :, :3].astype(int)-shadowed[:, :, :3].astype(int)
+        self.assertGreater(np.count_nonzero(np.linalg.norm(difference, axis=-1)[inside] > 3), 20)
+        self.assertGreater(difference[inside].sum(), 100)
+
     def test_distant_points_keep_colors_and_solar_dominance_with_effects_on_or_off(self):
         import numpy as np
 

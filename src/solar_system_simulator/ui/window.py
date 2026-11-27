@@ -586,6 +586,8 @@ class MainWindow(QMainWindow):
             'Realistic visibility removes the brightness floor and uses physical radii.\n\n'
             'Auto exposure dims the sky near the Sun and brightens dark views. The exposure '
             'slider adds or removes photographic stops in either automatic or manual mode.\n\n'
+            'Planets cast finite-Sun umbra and penumbra shadows. Saturn and its rings '
+            'cast shadows on each other. These effects are visual only.\n\n'
             'IMAGE CREDITS\nPlanet, Sun, Earth cloud/night, Saturn ring and Milky Way sky maps: '
             'Solar System Scope / INOVE. Unmodified source images, CC BY 4.0. '
             'https://www.solarsystemscope.com/textures/\n'

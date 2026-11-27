@@ -21,7 +21,8 @@ The Sun is emissive; gas giants show atmospheric imagery. Surface maps wrap
 actual sphere meshes. Cloud coverage and night lights are static source imagery.
 The renderer uses illustrative body axes and initial texture phases. Surface
 rotation follows published sidereal periods; Earth's cloud drift is illustrative.
-Saturn's ring map wraps a tilted annulus with approximate planetary shadowing.
+Saturn's ring map wraps a tilted annulus, receives Saturn's finite-Sun shadow,
+and casts an opacity-based shadow back onto the planet.
 The sky is direction sampled and oriented for presentation, not a calibrated
 star chart. The 8K source is resampled to at most 4K on GPU upload to limit memory.
 

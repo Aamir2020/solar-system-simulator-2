@@ -53,6 +53,7 @@ class SceneRenderer:
             self.body['surface_map'].value = 0
             self.body['night_map'].value = 1
             self.body['cloud_map'].value = 2
+            self.body['ring_map'].value = 3
             self.background['sky_map'].value = 0
         except Exception:
             self.release()
@@ -78,7 +79,7 @@ class SceneRenderer:
 
     def draw(self, camera, positions, width, height, *, physical=False, effects=True,
              stars=True, sky_brightness=.45, history=None, visibility='enhanced', elapsed=0.,
-             exposure=1.):
+             exposure=1., shadows=True):
         ctx = self.ctx
         ctx.fbo.depth_mask = True
         ctx.clear(*rgb(COLORS['space']), 1., depth=1.)
@@ -117,12 +118,27 @@ class SceneRenderer:
         program['focal'].value = focal
         program['log_far'].value = log_far
         program['effects'].value = effects
+        program['shadows'].value = shadows
         program['cloud_offset'].value = earth_cloud_offset(elapsed)
         program['exposure'].value = exposure
         self.night.use(1)
         self.clouds.use(2)
+        self.ring_texture.use(3)
         ctx.enable(moderngl.DEPTH_TEST)
         ctx.depth_func = '<='
+
+        physical_radii = np.array([body.radius for body in BODIES])/camera.distance
+
+        def shadow_uniforms(destination, index, include_target=False):
+            occluders = [body_index for body_index in range(1, len(BODIES))
+                         if include_target or body_index != index]
+            values = np.zeros((8, 4), dtype='f4')
+            values[:len(occluders), :3] = centers[occluders]
+            values[:len(occluders), 3] = physical_radii[occluders]
+            destination['sun_center'].value = tuple(centers[0])
+            destination['sun_radius'].value = float(physical_radii[0])
+            destination['occluder_count'].value = len(occluders)
+            destination['occluders'].write(values.tobytes())
 
         def body_uniforms(index, kind):
             rotation = axial_rotation(index, elapsed)
@@ -136,6 +152,7 @@ class SceneRenderer:
             program['light_local'].value = tuple(rotation.T @ light)
             program['kind'].value = kind
             program['opacity'].value = float(1 - layout.point_weights[index])
+            shadow_uniforms(program, index, include_target=kind == 9)
 
         for index in range(len(BODIES)):
             if layout.point_weights[index] >= 1:
@@ -151,6 +168,7 @@ class SceneRenderer:
             atmosphere['focal'].value = focal
             atmosphere['log_far'].value = log_far
             atmosphere['exposure'].value = exposure
+            atmosphere['shadows'].value = shadows
             for index, (color, scale, strength) in ATMOSPHERES.items():
                 opacity = float(1 - layout.point_weights[index])
                 if not opacity or not layout.visible[index]:
@@ -169,6 +187,7 @@ class SceneRenderer:
                 atmosphere['atmosphere_color'].value = rgb(color)
                 atmosphere['strength'].value = strength
                 atmosphere['opacity'].value = opacity
+                shadow_uniforms(atmosphere, index)
                 self.atmosphere_sphere.render()
         if history is not None and len(history) >= 2:
             self.trail['viewport'].value = (width, height)
